@@ -50,7 +50,9 @@ const ShareButton = ({ title, url, price }) => {
     if (navigator.share) {
       try {
         await navigator.share({ title, text: shareText, url: shareUrl });
-      } catch {}
+      } catch (_e) {
+        // User dismissed native share sheet
+      }
       return;
     }
     setOpen((o) => !o);

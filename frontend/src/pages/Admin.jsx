@@ -1,81 +1,127 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { getProductImage, handleImageError } from "../utils/images";
+import PlatformBadge from "../components/PlatformBadge";
 import toast from "react-hot-toast";
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  Activity,
+  Tag,
+  Globe,
+  Heart,
+  ShieldCheck,
+  Search,
+  Trash2,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  UserCheck,
+  UserX,
+  CheckCircle2,
+  Menu,
+  X,
+  LogOut,
+  ShoppingBag,
+  Eye,
+  BarChart3,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
-const TABS = [
-  { key: "dashboard", label: "Dashboard", icon: "📊" },
-  { key: "products", label: "Products", icon: "📦" },
-  { key: "users", label: "Users", icon: "👥" },
-  { key: "analyses", label: "Analyses", icon: "📋" },
-  { key: "offers", label: "Offers", icon: "🛒" },
+const NAV_TABS = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "products", label: "Products", icon: Package },
+  { key: "users", label: "User Access", icon: Users },
+  { key: "analyses", label: "Analyses Log", icon: Activity },
+  { key: "offers", label: "Store Offers", icon: Tag },
 ];
 
 const Admin = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
+
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [adminForm, setAdminForm] = useState({ username: "", password: "" });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Dashboard Stats
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  // Products
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsPage, setProductsPage] = useState(1);
   const [productsCount, setProductsCount] = useState(0);
   const [productsSearch, setProductsSearch] = useState("");
-  const [productsSort, setProductsSort] = useState("id");
+  const [productsSort, setProductsSort] = useState("-id");
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [productOffers, setProductOffers] = useState([]);
+  const [offersFetching, setOffersFetching] = useState(false);
 
+  // Users
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
+  // Analyses Telemetry
   const [analyses, setAnalyses] = useState([]);
   const [analysesLoading, setAnalysesLoading] = useState(false);
+  const [analysesPage, setAnalysesPage] = useState(1);
+  const [analysesTotal, setAnalysesTotal] = useState(0);
+  const [analysesSearch, setAnalysesSearch] = useState("");
+  const [analysesSearchInput, setAnalysesSearchInput] = useState("");
+  const [analysesPlatformFilter, setAnalysesPlatformFilter] = useState("all");
 
+  // Offers
   const [offers, setOffers] = useState([]);
   const [offersLoading, setOffersLoading] = useState(false);
   const [offersPlatform, setOffersPlatform] = useState("");
   const [offersSort, setOffersSort] = useState("");
   const [platforms, setPlatforms] = useState([]);
 
+  // Verify staff clearance
   useEffect(() => {
-    if (!user) { navigate("/login"); return; }
+    if (!user) {
+      navigate("/admin/login", { replace: true });
+      return;
+    }
     API.get("/users/me/")
       .then((res) => {
         const fresh = res.data;
         if (!fresh.is_staff && !fresh.is_superuser) {
-          setError("Access denied — Admin only. You are logged in as " + fresh.username);
-          setLoading(false);
+          navigate("/admin/login", { state: { denied: true }, replace: true });
           return;
         }
         setVerified(true);
         setLoading(false);
       })
       .catch(() => {
-        setError("Failed to verify admin credentials.");
-        setLoading(false);
+        navigate("/admin/login", { replace: true });
       });
   }, [user, navigate]);
 
+  // Fetch Dashboard Stats
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
       const res = await API.get("/users/admin-stats/");
       setStats(res.data);
-    } catch (e) {
+    } catch {
       setStats(null);
+    } finally {
+      setStatsLoading(false);
     }
-    setStatsLoading(false);
   }, []);
 
+  // Fetch Products
   const fetchProducts = useCallback(async () => {
     setProductsLoading(true);
     try {
@@ -91,10 +137,12 @@ const Admin = () => {
       }
     } catch {
       setProducts([]);
+    } finally {
+      setProductsLoading(false);
     }
-    setProductsLoading(false);
   }, [productsPage, productsSearch, productsSort]);
 
+  // Fetch Users
   const fetchUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
@@ -103,22 +151,38 @@ const Admin = () => {
       setUsers(Array.isArray(data) ? data : data.results || []);
     } catch {
       setUsers([]);
+    } finally {
+      setUsersLoading(false);
     }
-    setUsersLoading(false);
   }, []);
 
+  // Fetch Analyses with Pagination & Search
   const fetchAnalyses = useCallback(async () => {
     setAnalysesLoading(true);
     try {
-      const res = await API.get("/admin/analyses/");
+      const params = { page: analysesPage, per_page: 15 };
+      if (analysesSearch.trim()) params.search = analysesSearch.trim();
+      const res = await API.get("/admin/analyses/", { params });
       const data = res.data;
-      setAnalyses(data.results || (Array.isArray(data) ? data : []));
+      if (data && data.results) {
+        setAnalyses(data.results);
+        setAnalysesTotal(data.total || data.count || data.results.length);
+      } else if (Array.isArray(data)) {
+        setAnalyses(data);
+        setAnalysesTotal(data.length);
+      } else {
+        setAnalyses([]);
+        setAnalysesTotal(0);
+      }
     } catch {
       setAnalyses([]);
+      setAnalysesTotal(0);
+    } finally {
+      setAnalysesLoading(false);
     }
-    setAnalysesLoading(false);
-  }, []);
+  }, [analysesPage, analysesSearch]);
 
+  // Fetch Offers
   const fetchOffers = useCallback(async () => {
     setOffersLoading(true);
     try {
@@ -130,10 +194,12 @@ const Admin = () => {
       setOffers(data.results || (Array.isArray(data) ? data : []));
     } catch {
       setOffers([]);
+    } finally {
+      setOffersLoading(false);
     }
-    setOffersLoading(false);
   }, [offersPlatform, offersSort]);
 
+  // Fetch Platforms list
   const fetchPlatforms = useCallback(async () => {
     try {
       const res = await API.get("/admin/platforms/");
@@ -144,413 +210,1025 @@ const Admin = () => {
     }
   }, []);
 
+  // Load data based on active tab
   useEffect(() => {
     if (!verified) return;
     if (activeTab === "dashboard") fetchStats();
     if (activeTab === "products") fetchProducts();
     if (activeTab === "users") fetchUsers();
     if (activeTab === "analyses") fetchAnalyses();
-    if (activeTab === "offers") { fetchOffers(); fetchPlatforms(); }
+    if (activeTab === "offers") {
+      fetchOffers();
+      fetchPlatforms();
+    }
   }, [activeTab, verified, fetchStats, fetchProducts, fetchUsers, fetchAnalyses, fetchOffers, fetchPlatforms]);
 
-  useEffect(() => {
-    if (verified && activeTab === "products") fetchProducts();
-  }, [productsPage, productsSearch, productsSort, verified, activeTab, fetchProducts]);
-
+  // User RBAC: Promote
   const handlePromote = async (u) => {
     try {
       await API.post(`/users/${u.id}/promote/`, { action: "promote" });
-      setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, is_staff: true, is_superuser: true } : x));
-      toast.success(u.username + " promoted to staff.");
+      setUsers((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, is_staff: true, is_superuser: true } : x))
+      );
+      toast.success(`${u.username} promoted to Staff Administrator.`);
     } catch (e) {
-      toast.error("Failed: " + (e.response?.data?.detail || "Error"));
+      toast.error(e.response?.data?.detail || "Failed to promote user.");
     }
   };
 
+  // User RBAC: Demote
   const handleDemote = async (u) => {
     try {
       await API.post(`/users/${u.id}/promote/`, { action: "demote" });
-      setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, is_staff: false, is_superuser: false } : x));
-      toast.success(u.username + " demoted to regular user.");
+      setUsers((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, is_staff: false, is_superuser: false } : x))
+      );
+      toast.success(`${u.username} demoted to Customer.`);
     } catch (e) {
-      toast.error("Failed: " + (e.response?.data?.detail || "Error"));
+      toast.error(e.response?.data?.detail || "Failed to demote user.");
     }
   };
 
-  const handleDeleteProduct = async (id) => {
-    if (!window.confirm("Delete this product permanently?")) return;
+  // Product Deletion
+  const handleDeleteProduct = async (id, title) => {
+    if (!window.confirm(`Permanently delete product "${title || id}" and all its recorded offers?`)) {
+      return;
+    }
     try {
       await API.delete(`/admin/products/${id}/`);
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Product deleted successfully.");
     } catch {
       toast.error("Failed to delete product.");
     }
   };
 
+  // Expand product to inspect offers
   const handleViewOffers = async (product) => {
-    if (expandedProduct === product.id) { setExpandedProduct(null); return; }
+    if (expandedProduct === product.id) {
+      setExpandedProduct(null);
+      return;
+    }
     setExpandedProduct(product.id);
     setProductOffers([]);
+    setOffersFetching(true);
     try {
       const res = await API.get(`/admin/products/${product.id}/offers/`);
       const data = res.data;
       setProductOffers(Array.isArray(data) ? data : data.results || []);
     } catch {
       setProductOffers([]);
+    } finally {
+      setOffersFetching(false);
     }
   };
 
-  const handleAdminLogin = async (e) => {
+  // Analyses Telemetry Search Handlers
+  const handleAnalysesSearchSubmit = (e) => {
     e.preventDefault();
-    try {
-      const res = await API.post("/users/login/", adminForm);
-      localStorage.setItem("shopsmart_access", res.data.access);
-      localStorage.setItem("shopsmart_refresh", res.data.refresh);
-      const me = await API.get("/users/me/", { headers: { Authorization: `Bearer ${res.data.access}` } });
-      if (!me.data.is_staff && !me.data.is_superuser) {
-        toast.error("Not a staff account.");
-        return;
-      }
-      localStorage.setItem("shopsmart_user", JSON.stringify(me.data));
-      window.location.reload();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Login failed.");
-    }
+    setAnalysesPage(1);
+    setAnalysesSearch(analysesSearchInput);
   };
 
-  const cardStyle = {
-    background: "var(--bg-card)",
-    border: "1px solid var(--border-color)",
-    borderRadius: 12,
-    padding: "1.25rem",
+  const handleAnalysesSearchClear = () => {
+    setAnalysesSearchInput("");
+    setAnalysesSearch("");
+    setAnalysesPage(1);
   };
 
-  const inputStyle = {
-    padding: "0.6rem 0.8rem",
-    borderRadius: 8,
-    border: "1px solid var(--border-color)",
-    background: "var(--bg-card)",
-    color: "var(--text-primary)",
-    fontSize: "0.85rem",
-    outline: "none",
-  };
+  // Derived Analyses Telemetry Data (React 19 pure hook placement)
+  const displayedAnalyses = useMemo(() => {
+    if (analysesPlatformFilter === "all") return analyses;
+    return analyses.filter((a) => {
+      const p = (a.platform || a.platform_name || "").toLowerCase();
+      return p.includes(analysesPlatformFilter.toLowerCase());
+    });
+  }, [analyses, analysesPlatformFilter]);
 
-  const btnPrimary = {
-    background: "var(--accent-cyan)",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    padding: "0.45rem 1rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    fontSize: "0.8rem",
-  };
+  const analysesStats = useMemo(() => {
+    const total = analysesTotal || analyses.length;
+    let amazonCount = 0;
+    let otherCount = 0;
+    const uniqueUsers = new Set();
 
-  const btnDanger = {
-    background: "var(--accent-rose)",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-    padding: "0.3rem 0.7rem",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "0.75rem",
-  };
+    analyses.forEach((a) => {
+      const p = (a.platform || a.platform_name || "").toLowerCase();
+      if (p.includes("amazon")) amazonCount++;
+      else otherCount++;
+      if (a.user_name) uniqueUsers.add(a.user_name);
+    });
 
-  const tableStyle = {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: "0.85rem",
-  };
-
-  const thStyle = {
-    textAlign: "left",
-    padding: "0.7rem 0.6rem",
-    borderBottom: "2px solid var(--border-color)",
-    color: "var(--text-secondary)",
-    fontWeight: 700,
-    fontSize: "0.78rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.03em",
-  };
-
-  const tdStyle = {
-    padding: "0.6rem",
-    borderBottom: "1px solid var(--border-color)",
-    color: "var(--text-primary)",
-  };
-
-  const badgeStyle = (color) => ({
-    display: "inline-block",
-    padding: "0.15rem 0.55rem",
-    borderRadius: 20,
-    fontSize: "0.72rem",
-    fontWeight: 700,
-    background: color === "cyan" ? "rgba(6,182,212,0.15)" : color === "rose" ? "rgba(244,63,94,0.15)" : "rgba(168,85,247,0.15)",
-    color: color === "cyan" ? "var(--accent-cyan)" : color === "rose" ? "var(--accent-rose)" : "var(--accent-purple)",
-  });
+    return {
+      total,
+      amazonCount,
+      otherCount,
+      uniqueUsersCount: uniqueUsers.size || (total > 0 ? 1 : 0),
+    };
+  }, [analyses, analysesTotal]);
 
   if (loading) {
     return (
-      <div style={{ padding: "4rem", textAlign: "center", color: "var(--text-secondary)", fontSize: "1rem" }}>
-        <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>⏳</div>
-        Verifying admin access...
+      <div
+        className="page-container"
+        style={{
+          minHeight: "70vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "1rem",
+        }}
+      >
+        <RefreshCw size={32} className="spinner" style={{ color: "var(--accent-cyan)" }} />
+        <span style={{ fontSize: "0.95rem", color: "var(--text-secondary)", fontWeight: 500 }}>
+          Authenticating administrative credentials...
+        </span>
       </div>
     );
   }
 
-  if (!verified) {
+  // Filter users by search term
+  const filteredUsers = users.filter((u) => {
+    if (!userSearch.trim()) return true;
+    const term = userSearch.toLowerCase();
     return (
-      <div style={{ padding: "2rem", maxWidth: 460, margin: "3rem auto" }}>
-        <div style={{ ...cardStyle, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.25)", marginBottom: "1rem", color: "var(--accent-rose)", fontSize: "0.9rem" }}>
-          {error || "You do not have admin access."}
-        </div>
-        <div style={cardStyle}>
-          <h3 style={{ fontWeight: 800, marginBottom: "0.2rem", fontSize: "1.1rem" }}>🔐 Admin Login</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.82rem", marginBottom: "1rem" }}>
-            Enter staff credentials to continue.
-          </p>
-          <form onSubmit={handleAdminLogin} style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
-            <input
-              placeholder="Username"
-              value={adminForm.username}
-              onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value })}
-              required
-              style={{ ...inputStyle, padding: "0.7rem" }}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={adminForm.password}
-              onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
-              required
-              style={{ ...inputStyle, padding: "0.7rem" }}
-            />
-            <button type="submit" style={{ ...btnPrimary, padding: "0.7rem", fontSize: "0.9rem", borderRadius: 10 }}>
-              Login as Admin
-            </button>
-          </form>
-        </div>
-      </div>
+      u.username?.toLowerCase().includes(term) ||
+      u.email?.toLowerCase().includes(term) ||
+      String(u.id).includes(term)
     );
-  }
+  });
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-primary)" }}>
-      {/* Sidebar */}
-      <aside style={{
-        width: 240,
-        minWidth: 240,
-        background: "var(--bg-secondary)",
-        borderRight: "1px solid var(--border-color)",
-        padding: "1.5rem 0",
+    <div
+      style={{
         display: "flex",
-        flexDirection: "column",
-        position: "sticky",
-        top: 0,
-        height: "100vh",
-        overflowY: "auto",
-      }}>
-        <div style={{ padding: "0 1.25rem 1.25rem", borderBottom: "1px solid var(--border-color)", marginBottom: "0.75rem" }}>
-          <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text-primary)" }}>🛡️ ShopSmart</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>Admin Panel</div>
-        </div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "0 0.5rem", flex: 1 }}>
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+        minHeight: "calc(100vh - 120px)",
+        background: "var(--bg-primary)",
+        position: "relative",
+      }}
+    >
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 90,
+          }}
+        />
+      )}
+
+      {/* Modern Sidebar */}
+      <aside
+        style={{
+          width: 260,
+          minWidth: 260,
+          background: "var(--bg-secondary)",
+          borderRight: "1px solid var(--border-color)",
+          display: "flex",
+          flexDirection: "column",
+          position: "sticky",
+          top: 70,
+          height: "calc(100vh - 70px)",
+          zIndex: 95,
+          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: sidebarOpen ? "translateX(0)" : undefined,
+        }}
+      >
+        {/* Sidebar Header */}
+        <div
+          style={{
+            padding: "1.25rem 1.25rem 1rem",
+            borderBottom: "1px solid var(--border-subtle)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 26,
+                  height: 26,
+                  borderRadius: "6px",
+                  background: "rgba(6, 182, 212, 0.15)",
+                  color: "var(--accent-cyan)",
+                }}
+              >
+                <ShieldCheck size={16} />
+              </span>
+              <span style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text-primary)" }}>
+                Staff Console
+              </span>
+            </div>
+            <div
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "0.6rem",
-                padding: "0.6rem 0.8rem",
-                borderRadius: 8,
-                border: "none",
-                cursor: "pointer",
-                fontSize: "0.88rem",
-                fontWeight: activeTab === tab.key ? 700 : 500,
-                background: activeTab === tab.key ? "rgba(6,182,212,0.12)" : "transparent",
-                color: activeTab === tab.key ? "var(--accent-cyan)" : "var(--text-secondary)",
-                textAlign: "left",
-                transition: "all 0.15s",
+                gap: "0.3rem",
+                marginTop: "0.35rem",
+                fontSize: "0.68rem",
+                fontWeight: 700,
+                color: "var(--accent-emerald)",
+                background: "rgba(16, 185, 129, 0.1)",
+                padding: "0.15rem 0.5rem",
+                borderRadius: 999,
               }}
             >
-              <span style={{ fontSize: "1.1rem" }}>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "var(--accent-emerald)",
+                  boxShadow: "0 0 6px var(--accent-emerald)",
+                }}
+              />
+              SYSTEM ONLINE
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="mobile-only"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Navigation Tabs */}
+        <nav style={{ padding: "0.85rem 0.65rem", display: "flex", flexDirection: "column", gap: "0.3rem", flex: 1 }}>
+          {NAV_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setSidebarOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  padding: "0.65rem 0.85rem",
+                  borderRadius: "10px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "0.88rem",
+                  fontWeight: isActive ? 700 : 500,
+                  background: isActive ? "rgba(6, 182, 212, 0.12)" : "transparent",
+                  color: isActive ? "var(--accent-cyan)" : "var(--text-secondary)",
+                  textAlign: "left",
+                  transition: "all 0.18s ease",
+                  borderLeft: isActive ? "3px solid var(--accent-cyan)" : "3px solid transparent",
+                }}
+              >
+                <Icon size={18} style={{ color: isActive ? "var(--accent-cyan)" : "var(--text-muted)" }} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </nav>
-        <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border-color)", fontSize: "0.78rem", color: "var(--text-muted)" }}>
-          Logged in as <strong style={{ color: "var(--text-primary)" }}>{user?.username}</strong>
+
+        {/* Staff Operator Identity Footer */}
+        <div
+          style={{
+            padding: "1rem 1.2rem",
+            borderTop: "1px solid var(--border-subtle)",
+            background: "rgba(0, 0, 0, 0.2)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", marginBottom: "0.75rem" }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                flexShrink: 0,
+              }}
+            >
+              {user?.username?.charAt(0).toUpperCase() || "A"}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "var(--text-primary)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {user?.username}
+              </div>
+              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                {user?.is_superuser ? "Super Admin" : "Staff Member"}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <Link
+              to="/"
+              className="btn btn-secondary btn-sm"
+              style={{
+                flex: 1,
+                fontSize: "0.74rem",
+                padding: "0.35rem 0.5rem",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.3rem",
+                textDecoration: "none",
+              }}
+            >
+              <ShoppingBag size={13} />
+              Shopper View
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="btn btn-secondary btn-sm"
+              style={{
+                fontSize: "0.74rem",
+                padding: "0.35rem 0.5rem",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--accent-rose)",
+              }}
+              title="Sign Out"
+            >
+              <LogOut size={13} />
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main style={{ flex: 1, padding: "2rem 2.5rem", overflowY: "auto", minWidth: 0 }}>
+      {/* Main Admin Content Area */}
+      <main
+        style={{
+          flex: 1,
+          padding: "2rem 2.5rem",
+          overflowY: "auto",
+          minWidth: 0,
+        }}
+      >
+        {/* Mobile menu trigger */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }} className="mobile-only">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="btn btn-secondary btn-sm"
+            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+          >
+            <Menu size={16} />
+            Menu
+          </button>
+          <span style={{ fontWeight: 800, fontSize: "1rem" }}>
+            {NAV_TABS.find((t) => t.key === activeTab)?.label}
+          </span>
+        </div>
+
+        {/* 1. DASHBOARD OVERVIEW */}
         {activeTab === "dashboard" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.75rem", flexWrap: "wrap", gap: "1rem" }}>
               <div>
-                <h2 style={{ fontWeight: 800, fontSize: "1.4rem", margin: 0 }}>Dashboard</h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "0.3rem 0 0" }}>Overview of your platform</p>
+                <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, fontFamily: "var(--font-heading)" }}>
+                  Platform Telemetry
+                </h1>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: "0.25rem 0 0" }}>
+                  Real-time operational metrics across scraping nodes, user activity, and catalog coverage.
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={fetchStats}
+                disabled={statsLoading}
+                className="btn btn-secondary btn-sm"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                <RefreshCw size={14} className={statsLoading ? "spinner" : ""} />
+                <span>Sync Metrics</span>
+              </button>
             </div>
+
             {statsLoading ? (
-              <div style={{ color: "var(--text-secondary)", padding: "2rem", textAlign: "center" }}>Loading stats...</div>
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
+                <RefreshCw size={24} className="spinner" style={{ margin: "0 auto 0.5rem" }} />
+                <div>Fetching live system telemetry...</div>
+              </div>
             ) : stats ? (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+                {/* 6 Glowing KPI Cards */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: "1.25rem",
+                    marginBottom: "2rem",
+                  }}
+                >
                   {[
-                    { label: "Total Users", value: stats.users, icon: "👥", color: "var(--accent-cyan)" },
-                    { label: "Total Products", value: stats.products, icon: "📦", color: "var(--accent-purple)" },
-                    { label: "Total Offers", value: stats.offers, icon: "🏷️", color: "var(--accent-rose)" },
-                    { label: "Wishlists", value: stats.wishlists, icon: "💜", color: "var(--accent-purple)" },
-                    { label: "Analyses", value: stats.analyses, icon: "🔍", color: "var(--accent-cyan)" },
-                    { label: "Platforms", value: stats.platforms, icon: "🌐", color: "var(--accent-rose)" },
-                  ].map((item) => (
-                    <div key={item.label} style={{ ...cardStyle, display: "flex", alignItems: "center", gap: "1rem" }}>
-                      <div style={{ fontSize: "2rem" }}>{item.icon}</div>
-                      <div>
-                        <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>{item.label}</div>
-                        <div style={{ fontSize: "1.8rem", fontWeight: 800, color: item.color, lineHeight: 1.1 }}>{item.value ?? 0}</div>
+                    {
+                      label: "Indexed Products",
+                      value: stats.products ?? 0,
+                      icon: Package,
+                      color: "var(--accent-cyan)",
+                      bg: "rgba(6, 182, 212, 0.12)",
+                    },
+                    {
+                      label: "Live Store Offers",
+                      value: stats.offers ?? 0,
+                      icon: Tag,
+                      color: "var(--accent-emerald)",
+                      bg: "rgba(16, 185, 129, 0.12)",
+                    },
+                    {
+                      label: "Registered Users",
+                      value: stats.users ?? 0,
+                      icon: Users,
+                      color: "var(--accent-purple)",
+                      bg: "rgba(168, 85, 247, 0.12)",
+                    },
+                    {
+                      label: "Completed Analyses",
+                      value: stats.analyses ?? 0,
+                      icon: Activity,
+                      color: "var(--accent-amber)",
+                      bg: "rgba(245, 158, 11, 0.12)",
+                    },
+                    {
+                      label: "Saved Wishlists",
+                      value: stats.wishlists ?? 0,
+                      icon: Heart,
+                      color: "var(--accent-rose)",
+                      bg: "rgba(244, 63, 94, 0.12)",
+                    },
+                    {
+                      label: "Active Scraper Nodes",
+                      value: stats.platforms ?? 3,
+                      icon: Globe,
+                      color: "var(--accent-cyan)",
+                      bg: "rgba(6, 182, 212, 0.12)",
+                    },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.label}
+                        className="card-panel card-glow"
+                        style={{
+                          padding: "1.25rem 1.4rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "1.1rem",
+                          borderRadius: "14px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 46,
+                            height: 46,
+                            borderRadius: "12px",
+                            background: item.bg,
+                            color: item.color,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon size={22} />
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              color: "var(--text-muted)",
+                              marginBottom: "0.2rem",
+                            }}
+                          >
+                            {item.label}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "1.75rem",
+                              fontWeight: 800,
+                              color: "var(--text-primary)",
+                              fontFamily: "var(--font-mono)",
+                              lineHeight: 1,
+                            }}
+                          >
+                            {Number(item.value).toLocaleString("en-IN")}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                <div style={cardStyle}>
-                  <h3 style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "0.75rem" }}>Recent Users</h3>
-                  {(stats.recent_users || []).length === 0 ? (
-                    <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>No recent users.</div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                      {(stats.recent_users || []).slice(0, 5).map((u) => (
-                        <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.55rem 0.75rem", background: "var(--bg-secondary)", borderRadius: 8 }}>
-                          <span style={{ fontSize: "0.85rem" }}>
-                            <strong>{u.username}</strong>
-                            <span style={{ color: "var(--text-muted)", margin: "0 0.4rem" }}>•</span>
-                            <span style={{ color: "var(--text-secondary)" }}>{u.email}</span>
-                          </span>
-                          <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                            {new Date(u.date_joined).toLocaleDateString("en-IN")}
-                          </span>
-                        </div>
-                      ))}
+                {/* Sub-panels: Recent Shoppers & System Specs */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.5rem" }}>
+                  {/* Recent Users Card */}
+                  <div className="card-panel" style={{ padding: "1.5rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                      <h3 style={{ fontSize: "1rem", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
+                        Recently Registered Shoppers
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("users")}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "var(--accent-cyan)",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        View All →
+                      </button>
                     </div>
-                  )}
+
+                    {(stats.recent_users || []).length === 0 ? (
+                      <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", padding: "1rem 0" }}>
+                        No new user registrations recorded.
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                        {(stats.recent_users || []).slice(0, 5).map((u) => (
+                          <div
+                            key={u.id}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              padding: "0.65rem 0.85rem",
+                              background: "rgba(255, 255, 255, 0.02)",
+                              border: "1px solid var(--border-subtle)",
+                              borderRadius: "10px",
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                                {u.username}
+                              </div>
+                              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                                {u.email || "No email registered"}
+                              </div>
+                            </div>
+                            <span
+                              style={{
+                                fontSize: "0.72rem",
+                                color: "var(--text-muted)",
+                                fontFamily: "var(--font-mono)",
+                              }}
+                            >
+                              {new Date(u.date_joined).toLocaleDateString("en-IN", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Operational Architecture Specs */}
+                  <div className="card-panel" style={{ padding: "1.5rem" }}>
+                    <h3 style={{ fontSize: "1rem", fontWeight: 700, margin: "0 0 1rem", color: "var(--text-primary)" }}>
+                      Engine Architecture Status
+                    </h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.84rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.6rem", borderBottom: "1px solid var(--border-subtle)" }}>
+                        <span style={{ color: "var(--text-secondary)" }}>AI Scoring Formula:</span>
+                        <span style={{ color: "var(--accent-cyan)", fontFamily: "var(--font-mono)", fontWeight: 700 }}>8-Dimensional Weighted</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.6rem", borderBottom: "1px solid var(--border-subtle)" }}>
+                        <span style={{ color: "var(--text-secondary)" }}>Price Weighting:</span>
+                        <span style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>35% Index Low Ratio</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.6rem", borderBottom: "1px solid var(--border-subtle)" }}>
+                        <span style={{ color: "var(--text-secondary)" }}>Review Confidence:</span>
+                        <span style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>Bayesian Adjusted</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.6rem", borderBottom: "1px solid var(--border-subtle)" }}>
+                        <span style={{ color: "var(--text-secondary)" }}>Scraper Pipeline:</span>
+                        <span style={{ color: "var(--accent-emerald)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+                          <CheckCircle2 size={13} /> Active (Amazon, Flipkart, Croma)
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--text-secondary)" }}>Token Authentication:</span>
+                        <span style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>JWT + SimpleJWT Bearer</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (
-              <div style={{ color: "var(--text-muted)" }}>No stats available.</div>
+              <div style={{ color: "var(--text-muted)" }}>No operational statistics retrieved.</div>
             )}
           </div>
         )}
 
+        {/* 2. PRODUCTS MANAGEMENT */}
         {activeTab === "products" && (
           <div>
-            <h2 style={{ fontWeight: 800, fontSize: "1.4rem", marginBottom: "1rem" }}>Products</h2>
-            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", alignItems: "center" }}>
-              <input
-                placeholder="Search products..."
-                value={productsSearch}
-                onChange={(e) => { setProductsSearch(e.target.value); setProductsPage(1); }}
-                style={{ ...inputStyle, flex: 1, padding: "0.6rem 0.8rem" }}
-              />
-              <select value={productsSort} onChange={(e) => setProductsSort(e.target.value)} style={{ ...inputStyle, padding: "0.55rem" }}>
-                <option value="id">Sort by ID</option>
-                <option value="title">Sort by Title</option>
-                <option value="brand">Sort by Brand</option>
-                <option value="category">Sort by Category</option>
-                <option value="-id">ID (Desc)</option>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
+              <div>
+                <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, fontFamily: "var(--font-heading)" }}>
+                  Catalog Management
+                </h1>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: "0.25rem 0 0" }}>
+                  Inspect scraped products, multi-store offer distributions, and catalog health.
+                </p>
+              </div>
+            </div>
+
+            {/* Filter / Search Bar */}
+            <div
+              style={{
+                display: "flex",
+                gap: "0.75rem",
+                marginBottom: "1.25rem",
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ position: "relative", flex: 1, minWidth: 240, display: "flex", alignItems: "center" }}>
+                <Search size={16} style={{ position: "absolute", left: "0.85rem", color: "var(--text-muted)", pointerEvents: "none" }} />
+                <input
+                  type="text"
+                  placeholder="Search products by title, brand, or SKU..."
+                  value={productsSearch}
+                  onChange={(e) => {
+                    setProductsSearch(e.target.value);
+                    setProductsPage(1);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "0.65rem 0.85rem 0.65rem 2.4rem",
+                    borderRadius: "10px",
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-color)",
+                    color: "var(--text-primary)",
+                    fontSize: "0.88rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <select
+                value={productsSort}
+                onChange={(e) => setProductsSort(e.target.value)}
+                style={{
+                  padding: "0.65rem 0.85rem",
+                  borderRadius: "10px",
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--text-primary)",
+                  fontSize: "0.88rem",
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="-id">Latest Products First</option>
+                <option value="id">Oldest Products First</option>
+                <option value="title">Title (A - Z)</option>
+                <option value="brand">Brand (A - Z)</option>
+                <option value="category">Category (A - Z)</option>
               </select>
             </div>
+
             {productsLoading ? (
-              <div style={{ color: "var(--text-secondary)", padding: "2rem", textAlign: "center" }}>Loading products...</div>
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
+                <RefreshCw size={24} className="spinner" style={{ margin: "0 auto 0.5rem" }} />
+                <div>Loading catalog inventory...</div>
+              </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr>
-                      <th style={thStyle}>ID</th>
-                      <th style={thStyle}>Image</th>
-                      <th style={thStyle}>Title</th>
-                      <th style={thStyle}>Brand</th>
-                      <th style={thStyle}>Category</th>
-                      <th style={thStyle}>Offers</th>
-                      <th style={thStyle}>Created</th>
-                      <th style={thStyle}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map((p) => (
-                      <React.Fragment key={p.id}>
+              <div className="card-panel" style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 60 }}>ID</th>
+                        <th style={{ width: 60 }}>Item</th>
+                        <th>Product Details</th>
+                        <th>Brand & Category</th>
+                        <th>Offers</th>
+                        <th>Created</th>
+                        <th style={{ textAlign: "right", width: 140 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((p) => {
+                        const isExpanded = expandedProduct === p.id;
+                        return (
+                          <React.Fragment key={p.id}>
+                            <tr>
+                              <td style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                                #{p.id}
+                              </td>
+                              <td>
+                                <img
+                                  src={getProductImage(p.image_url)}
+                                  alt=""
+                                  onError={handleImageError}
+                                  style={{
+                                    width: 42,
+                                    height: 42,
+                                    borderRadius: "8px",
+                                    objectFit: "contain",
+                                    background: "#ffffff",
+                                    padding: "2px",
+                                    border: "1px solid var(--border-subtle)",
+                                  }}
+                                />
+                              </td>
+                              <td style={{ maxWidth: 300 }}>
+                                <div
+                                  style={{
+                                    fontWeight: 700,
+                                    color: "var(--text-primary)",
+                                    fontSize: "0.88rem",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                  title={p.title}
+                                >
+                                  {p.title}
+                                </div>
+                                <div style={{ fontSize: "0.75rem", color: "var(--accent-cyan)", fontFamily: "var(--font-mono)", marginTop: "0.15rem" }}>
+                                  Best Price: {p.lowest_price ? `₹${Number(p.lowest_price).toLocaleString("en-IN")}` : "—"}
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: "0.84rem", color: "var(--text-primary)", fontWeight: 600 }}>
+                                  {p.brand || "—"}
+                                </div>
+                                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                  {p.category || "General"}
+                                </div>
+                              </td>
+                              <td>
+                                <span className="badge badge-cyan" style={{ fontFamily: "var(--font-mono)" }}>
+                                  {p.offers_count ?? p.num_offers ?? "0"} offers
+                                </span>
+                              </td>
+                              <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                                {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
+                              </td>
+                              <td style={{ textAlign: "right" }}>
+                                <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleViewOffers(p)}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      padding: "0.3rem 0.6rem",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem",
+                                    }}
+                                  >
+                                    {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                    <span>{isExpanded ? "Hide" : "Offers"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteProduct(p.id, p.title)}
+                                    className="btn btn-sm"
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      padding: "0.3rem 0.55rem",
+                                      background: "rgba(244, 63, 94, 0.12)",
+                                      color: "var(--accent-rose)",
+                                      border: "1px solid rgba(244, 63, 94, 0.25)",
+                                    }}
+                                    title="Delete product"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Accordion: Live Multi-Store Offers for Product */}
+                            {isExpanded && (
+                              <tr>
+                                <td
+                                  colSpan={7}
+                                  style={{
+                                    padding: "1rem 1.25rem",
+                                    background: "rgba(0, 0, 0, 0.35)",
+                                    borderBottom: "1px solid var(--border-color)",
+                                  }}
+                                >
+                                  <div style={{ fontSize: "0.85rem" }}>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        marginBottom: "0.75rem",
+                                      }}
+                                    >
+                                      <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                                        Registered Store Offers ({productOffers.length})
+                                      </span>
+                                      <Link
+                                        to={`/product/${p.id}`}
+                                        target="_blank"
+                                        style={{
+                                          fontSize: "0.78rem",
+                                          color: "var(--accent-cyan)",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "0.3rem",
+                                          textDecoration: "none",
+                                        }}
+                                      >
+                                        View Public Product Page <ExternalLink size={12} />
+                                      </Link>
+                                    </div>
+
+                                    {offersFetching ? (
+                                      <div style={{ padding: "1rem", color: "var(--text-muted)" }}>
+                                        Loading offers from database...
+                                      </div>
+                                    ) : productOffers.length > 0 ? (
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                        {productOffers.map((o, idx) => (
+                                          <div
+                                            key={idx}
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                              padding: "0.6rem 0.85rem",
+                                              background: "var(--bg-secondary)",
+                                              borderRadius: "8px",
+                                              border: "1px solid var(--border-subtle)",
+                                              fontSize: "0.82rem",
+                                              flexWrap: "wrap",
+                                              gap: "0.5rem",
+                                            }}
+                                          >
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                              <PlatformBadge platform={o.store_name || o.platform_name || o.platform} />
+                                              <span
+                                                style={{
+                                                  fontWeight: 700,
+                                                  color: "var(--text-primary)",
+                                                  fontFamily: "var(--font-mono)",
+                                                }}
+                                              >
+                                                ₹{Number(o.current_price || o.price).toLocaleString("en-IN")}
+                                              </span>
+                                              {(o.original_price > 0 || o.mrp) && (
+                                                <span
+                                                  style={{
+                                                    color: "var(--text-muted)",
+                                                    textDecoration: "line-through",
+                                                    fontFamily: "var(--font-mono)",
+                                                  }}
+                                                >
+                                                  ₹{Number(o.original_price || o.mrp).toLocaleString("en-IN")}
+                                                </span>
+                                              )}
+                                              {o.rating && (
+                                                <span style={{ color: "var(--accent-amber)" }}>
+                                                  ★ {o.rating}
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                              {o.in_stock === false ? (
+                                                <span style={{ color: "var(--accent-rose)", fontWeight: 600 }}>
+                                                  Out of Stock
+                                                </span>
+                                              ) : (
+                                                <span style={{ color: "var(--accent-emerald)", fontWeight: 600 }}>
+                                                  In Stock
+                                                </span>
+                                              )}
+                                              {o.url && (
+                                                <a
+                                                  href={o.url}
+                                                  target="_blank"
+                                                  rel="noreferrer"
+                                                  style={{
+                                                    color: "var(--accent-cyan)",
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: "0.25rem",
+                                                    textDecoration: "none",
+                                                  }}
+                                                >
+                                                  Store Link <ExternalLink size={11} />
+                                                </a>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div style={{ color: "var(--text-muted)", padding: "0.5rem 0" }}>
+                                        No multi-store offers recorded for this item.
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {products.length === 0 && (
                         <tr>
-                          <td style={tdStyle}>{p.id}</td>
-                          <td style={tdStyle}>
-                            <img src={getProductImage(p.image_url)} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} onError={handleImageError} />
-                          </td>
-                          <td style={{ ...tdStyle, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</td>
-                          <td style={tdStyle}>{p.brand || "—"}</td>
-                          <td style={tdStyle}>{p.category || "—"}</td>
-                          <td style={tdStyle}>
-                            <span style={badgeStyle("cyan")}>{p.offers_count ?? p.num_offers ?? "—"}</span>
-                          </td>
-                          <td style={{ ...tdStyle, color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                            {p.created_at ? new Date(p.created_at).toLocaleDateString("en-IN") : "—"}
-                          </td>
-                          <td style={{ ...tdStyle, display: "flex", gap: "0.4rem" }}>
-                            <button onClick={() => handleViewOffers(p)} style={{ ...btnPrimary, fontSize: "0.75rem", padding: "0.3rem 0.6rem" }}>
-                              {expandedProduct === p.id ? "Hide" : "View"}
-                            </button>
-                            <button onClick={() => handleDeleteProduct(p.id)} style={btnDanger}>
-                              Delete
-                            </button>
+                          <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                            No products found matching query.
                           </td>
                         </tr>
-                        {expandedProduct === p.id && (
-                          <tr>
-                            <td colSpan={8} style={{ padding: "0.75rem", background: "var(--bg-secondary)" }}>
-                              <div style={{ fontSize: "0.85rem" }}>
-                                <div style={{ fontWeight: 700, marginBottom: "0.5rem" }}>Product Details</div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.75rem" }}>
-                                  <div><span style={{ color: "var(--text-muted)" }}>Brand:</span> {p.brand || "—"}</div>
-                                  <div><span style={{ color: "var(--text-muted)" }}>Category:</span> {p.category || "—"}</div>
-                                  <div><span style={{ color: "var(--text-muted)" }}>Best Price:</span> {p.lowest_price ? `₹${p.lowest_price.toLocaleString("en-IN")}` : "—"}</div>
-                                </div>
-                                {productOffers.length > 0 && (
-                                  <div>
-                                    <div style={{ fontWeight: 700, marginBottom: "0.4rem" }}>Offers ({productOffers.length})</div>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                                      {productOffers.map((o, i) => (
-                                        <div key={i} style={{ display: "flex", gap: "1rem", padding: "0.4rem 0.6rem", background: "var(--bg-card)", borderRadius: 6, fontSize: "0.82rem" }}>
-                                          <span style={badgeStyle("purple")}>{o.store_name || o.platform_name || o.platform}</span>
-                                          <span style={{ color: "var(--accent-cyan)", fontWeight: 700 }}>₹{o.current_price || o.price}</span>
-                                          {(o.original_price > 0 || o.mrp) && <span style={{ color: "var(--text-muted)", textDecoration: "line-through" }}>₹{o.original_price || o.mrp}</span>}
-                                          {o.rating && <span>⭐ {o.rating}</span>}
-                                          {o.in_stock === false && <span style={{ color: "var(--accent-rose)" }}>Out of Stock</span>}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                    {products.length === 0 && (
-                      <tr><td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>No products found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", fontSize: "0.85rem" }}>
-                  <span style={{ color: "var(--text-secondary)" }}>Showing {products.length} of {productsCount}</span>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button disabled={productsPage <= 1} onClick={() => setProductsPage((p) => p - 1)} style={{ ...btnPrimary, opacity: productsPage <= 1 ? 0.4 : 1 }}>Prev</button>
-                    <span style={{ padding: "0.4rem 0.8rem", color: "var(--text-secondary)" }}>Page {productsPage}</span>
-                    <button disabled={products.length < 20} onClick={() => setProductsPage((p) => p + 1)} style={{ ...btnPrimary, opacity: products.length < 20 ? 0.4 : 1 }}>Next</button>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "0.85rem 1.25rem",
+                    borderTop: "1px solid var(--border-subtle)",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    Showing {products.length} of {productsCount} items
+                  </span>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      disabled={productsPage <= 1}
+                      onClick={() => setProductsPage((p) => Math.max(1, p - 1))}
+                      className="btn btn-secondary btn-sm"
+                      style={{ opacity: productsPage <= 1 ? 0.4 : 1 }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ color: "var(--text-primary)", fontWeight: 600, padding: "0 0.4rem" }}>
+                      Page {productsPage}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={products.length < 20}
+                      onClick={() => setProductsPage((p) => p + 1)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ opacity: products.length < 20 ? 0.4 : 1 }}
+                    >
+                      Next
+                    </button>
                   </div>
                 </div>
               </div>
@@ -558,176 +1236,957 @@ const Admin = () => {
           </div>
         )}
 
+        {/* 3. USER ACCESS & RBAC MANAGEMENT */}
         {activeTab === "users" && (
           <div>
-            <h2 style={{ fontWeight: 800, fontSize: "1.4rem", marginBottom: "1rem" }}>User Management</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
+              <div>
+                <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, fontFamily: "var(--font-heading)" }}>
+                  Role-Based User Access
+                </h1>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: "0.25rem 0 0" }}>
+                  Manage shopper accounts, grant staff clearance, or demote platform operators.
+                </p>
+              </div>
+
+              {/* User Search */}
+              <div style={{ position: "relative", minWidth: 260 }}>
+                <Search size={16} style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  placeholder="Filter users by username or email..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.6rem 0.85rem 0.6rem 2.4rem",
+                    borderRadius: "10px",
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-color)",
+                    color: "var(--text-primary)",
+                    fontSize: "0.88rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+
             {usersLoading ? (
-              <div style={{ color: "var(--text-secondary)", padding: "2rem", textAlign: "center" }}>Loading users...</div>
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
+                <RefreshCw size={24} className="spinner" style={{ margin: "0 auto 0.5rem" }} />
+                <div>Fetching user database...</div>
+              </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr>
-                      <th style={thStyle}>ID</th>
-                      <th style={thStyle}>Username</th>
-                      <th style={thStyle}>Email</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Joined</th>
-                      <th style={thStyle}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u) => (
-                      <tr key={u.id}>
-                        <td style={tdStyle}>{u.id}</td>
-                        <td style={{ ...tdStyle, fontWeight: 600 }}>{u.username}</td>
-                        <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>{u.email}</td>
-                        <td style={tdStyle}>
-                          {u.is_staff ? <span style={badgeStyle("cyan")}>Staff</span> : <span style={badgeStyle("rose")}>User</span>}
-                        </td>
-                        <td style={{ ...tdStyle, color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                          {new Date(u.date_joined).toLocaleDateString("en-IN")}
-                        </td>
-                        <td style={tdStyle}>
-                          {user?.id !== u.id ? (
-                            <div style={{ display: "flex", gap: "0.4rem" }}>
-                              {!u.is_staff && (
-                                <button onClick={() => handlePromote(u)} style={btnPrimary}>Promote</button>
-                              )}
-                              {u.is_staff && (
-                                <button onClick={() => handleDemote(u)} style={btnDanger}>Demote</button>
-                              )}
-                            </div>
-                          ) : (
-                            <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>You</span>
-                          )}
-                        </td>
+              <div className="card-panel" style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 60 }}>UID</th>
+                        <th>User Profile</th>
+                        <th>Email Contact</th>
+                        <th>Access Clearance</th>
+                        <th>Member Since</th>
+                        <th style={{ textAlign: "right", width: 140 }}>RBAC Action</th>
                       </tr>
-                    ))}
-                    {users.length === 0 && (
-                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>No users found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((u) => {
+                        const isSelf = user?.id === u.id;
+                        return (
+                          <tr key={u.id}>
+                            <td style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                              #{u.id}
+                            </td>
+                            <td>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                                <div
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: "50%",
+                                    background: u.is_staff ? "rgba(6, 182, 212, 0.2)" : "rgba(255, 255, 255, 0.08)",
+                                    color: u.is_staff ? "var(--accent-cyan)" : "var(--text-secondary)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontWeight: 700,
+                                    fontSize: "0.75rem",
+                                  }}
+                                >
+                                  {u.username?.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.88rem" }}>
+                                    {u.username}
+                                  </span>
+                                  {isSelf && (
+                                    <span
+                                      style={{
+                                        marginLeft: "0.4rem",
+                                        fontSize: "0.7rem",
+                                        color: "var(--accent-cyan)",
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      (You)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                              {u.email || "—"}
+                            </td>
+                            <td>
+                              {u.is_superuser ? (
+                                <span
+                                  className="badge badge-purple"
+                                  style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
+                                >
+                                  Superuser
+                                </span>
+                              ) : u.is_staff ? (
+                                <span
+                                  className="badge badge-cyan"
+                                  style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
+                                >
+                                  Staff Operator
+                                </span>
+                              ) : (
+                                <span
+                                  className="badge"
+                                  style={{
+                                    fontSize: "0.72rem",
+                                    background: "rgba(255, 255, 255, 0.06)",
+                                    color: "var(--text-muted)",
+                                    textTransform: "uppercase",
+                                  }}
+                                >
+                                  Customer
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                              {new Date(u.date_joined).toLocaleDateString("en-IN", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {isSelf ? (
+                                <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>Current User</span>
+                              ) : !u.is_staff ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePromote(u)}
+                                  className="btn btn-sm"
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    padding: "0.3rem 0.65rem",
+                                    background: "rgba(16, 185, 129, 0.12)",
+                                    color: "var(--accent-emerald)",
+                                    border: "1px solid rgba(16, 185, 129, 0.25)",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.3rem",
+                                  }}
+                                >
+                                  <UserCheck size={13} />
+                                  <span>Promote</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDemote(u)}
+                                  className="btn btn-sm"
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    padding: "0.3rem 0.65rem",
+                                    background: "rgba(244, 63, 94, 0.12)",
+                                    color: "var(--accent-rose)",
+                                    border: "1px solid rgba(244, 63, 94, 0.25)",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.3rem",
+                                  }}
+                                >
+                                  <UserX size={13} />
+                                  <span>Demote</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {filteredUsers.length === 0 && (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                            No users found matching query.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
         )}
 
+        {/* 4. ANALYSES & SCRAPING LOG */}
         {activeTab === "analyses" && (
           <div>
-            <h2 style={{ fontWeight: 800, fontSize: "1.4rem", marginBottom: "1rem" }}>Recent Analyses</h2>
+            {/* Header & Controls */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: "1.5rem",
+                flexWrap: "wrap",
+                gap: "1rem",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}>
+                  <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, fontFamily: "var(--font-heading)" }}>
+                    Analyses Telemetry Log
+                  </h1>
+                  <span
+                    style={{
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      padding: "0.2rem 0.6rem",
+                      borderRadius: "999px",
+                      background: "rgba(16, 185, 129, 0.12)",
+                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                      color: "var(--accent-emerald)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                    }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-emerald)", display: "inline-block" }} />
+                    Live Scraping Feed
+                  </span>
+                </div>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: 0 }}>
+                  Real-time audit log of product URLs submitted for scraping, cross-matching, and deal scoring.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  onClick={fetchAnalyses}
+                  disabled={analysesLoading}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", padding: "0.5rem 0.9rem" }}
+                >
+                  <RefreshCw size={14} className={analysesLoading ? "spinner" : ""} />
+                  <span>Refresh Telemetry</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "1rem",
+                marginBottom: "1.5rem",
+              }}
+            >
+              <div className="card-panel" style={{ padding: "1.1rem 1.25rem", display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    background: "rgba(6, 182, 212, 0.12)",
+                    border: "1px solid rgba(6, 182, 212, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent-cyan)",
+                  }}
+                >
+                  <Activity size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+                    {analysesStats.total}
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "var(--text-secondary)", fontWeight: 600 }}>Total Recorded Scrapes</div>
+                </div>
+              </div>
+
+              <div className="card-panel" style={{ padding: "1.1rem 1.25rem", display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    background: "rgba(245, 158, 11, 0.12)",
+                    border: "1px solid rgba(245, 158, 11, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent-amber)",
+                  }}
+                >
+                  <Globe size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+                    {analysesStats.amazonCount}
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "var(--text-secondary)", fontWeight: 600 }}>Amazon Market Ingestion</div>
+                </div>
+              </div>
+
+              <div className="card-panel" style={{ padding: "1.1rem 1.25rem", display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    background: "rgba(139, 92, 246, 0.12)",
+                    border: "1px solid rgba(139, 92, 246, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent-purple)",
+                  }}
+                >
+                  <ShoppingBag size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+                    {analysesStats.otherCount}
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "var(--text-secondary)", fontWeight: 600 }}>Cross-Market Alternatives</div>
+                </div>
+              </div>
+
+              <div className="card-panel" style={{ padding: "1.1rem 1.25rem", display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    background: "rgba(16, 185, 129, 0.12)",
+                    border: "1px solid rgba(16, 185, 129, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent-emerald)",
+                  }}
+                >
+                  <Users size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+                    {analysesStats.uniqueUsersCount}
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "var(--text-secondary)", fontWeight: 600 }}>Unique Shoppers / Guests</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div
+              className="card-panel"
+              style={{
+                padding: "1rem 1.25rem",
+                marginBottom: "1.25rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "1rem",
+                flexWrap: "wrap",
+              }}
+            >
+              <form
+                onSubmit={handleAnalysesSearchSubmit}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  flex: "1 1 300px",
+                  maxWidth: 500,
+                  position: "relative",
+                }}
+              >
+                <Search
+                  size={16}
+                  style={{
+                    position: "absolute",
+                    left: "0.85rem",
+                    color: "var(--text-muted)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search by product title, store URL, or user..."
+                  value={analysesSearchInput}
+                  onChange={(e) => setAnalysesSearchInput(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.55rem 2.2rem 0.55rem 2.4rem",
+                    borderRadius: "8px",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-color)",
+                    color: "var(--text-primary)",
+                    fontSize: "0.86rem",
+                    outline: "none",
+                  }}
+                />
+                {analysesSearchInput && (
+                  <button
+                    type="button"
+                    onClick={handleAnalysesSearchClear}
+                    style={{
+                      position: "absolute",
+                      right: "5.5rem",
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--text-muted)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0.2rem",
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: "0.5rem 0.85rem", fontSize: "0.8rem", whiteSpace: "nowrap" }}
+                >
+                  Search
+                </button>
+              </form>
+
+              {/* Platform Filter Tabs */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginRight: "0.25rem", fontWeight: 600 }}>
+                  <Filter size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 3 }} /> Filter:
+                </span>
+                {["all", "Amazon", "Flipkart", "Croma"].map((platform) => {
+                  const isActive = analysesPlatformFilter.toLowerCase() === platform.toLowerCase();
+                  return (
+                    <button
+                      key={platform}
+                      type="button"
+                      onClick={() => setAnalysesPlatformFilter(platform)}
+                      style={{
+                        padding: "0.3rem 0.7rem",
+                        borderRadius: "999px",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        border: "1px solid",
+                        borderColor: isActive ? "var(--accent-cyan)" : "var(--border-color)",
+                        background: isActive ? "rgba(6, 182, 212, 0.15)" : "transparent",
+                        color: isActive ? "var(--accent-cyan)" : "var(--text-secondary)",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {platform === "all" ? "All Platforms" : platform}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Telemetry Data Table */}
             {analysesLoading ? (
-              <div style={{ color: "var(--text-secondary)", padding: "2rem", textAlign: "center" }}>Loading analyses...</div>
+              <div className="card-panel" style={{ textAlign: "center", padding: "4rem 2rem", color: "var(--text-secondary)" }}>
+                <RefreshCw size={28} className="spinner" style={{ margin: "0 auto 0.75rem", color: "var(--accent-cyan)" }} />
+                <div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: "0.95rem" }}>Synchronizing Scraping Telemetry...</div>
+                <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>Reading real-time analysis pipeline database</div>
+              </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr>
-                      <th style={thStyle}>ID</th>
-                      <th style={thStyle}>URL</th>
-                      <th style={thStyle}>Platform</th>
-                      <th style={thStyle}>Product</th>
-                      <th style={thStyle}>Analyzed At</th>
-                      <th style={thStyle}>User</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analyses.slice(0, 20).map((a) => (
-                      <tr key={a.id}>
-                        <td style={tdStyle}>{a.id}</td>
-                        <td style={{ ...tdStyle, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <a href={a.url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-cyan)" }}>{a.url}</a>
-                        </td>
-                        <td style={tdStyle}>
-                          <span style={badgeStyle("purple")}>{a.platform_name || a.platform || "—"}</span>
-                        </td>
-                        <td style={{ ...tdStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {a.product_title || a.product || "—"}
-                        </td>
-                        <td style={{ ...tdStyle, color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                          {a.analyzed_at ? new Date(a.analyzed_at).toLocaleString("en-IN") : "—"}
-                        </td>
-                        <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>
-                          {a.user_name || a.user || "—"}
-                        </td>
+              <div className="card-panel" style={{ padding: 0, overflow: "hidden", borderRadius: "14px" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ background: "rgba(255, 255, 255, 0.02)", borderBottom: "1px solid var(--border-color)" }}>
+                        <th style={{ width: 65, padding: "0.85rem 1rem", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
+                          ID
+                        </th>
+                        <th style={{ minWidth: 280, padding: "0.85rem 1rem", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
+                          Product Extracted
+                        </th>
+                        <th style={{ minWidth: 160, padding: "0.85rem 1rem", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
+                          Market Origin
+                        </th>
+                        <th style={{ minWidth: 140, padding: "0.85rem 1rem", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
+                          Initiated By
+                        </th>
+                        <th style={{ minWidth: 120, padding: "0.85rem 1rem", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
+                          Timestamp
+                        </th>
+                        <th style={{ width: 160, textAlign: "right", padding: "0.85rem 1.25rem", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
+                          Actions
+                        </th>
                       </tr>
-                    ))}
-                    {analyses.length === 0 && (
-                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>No analyses found.</td></tr>
+                    </thead>
+                    <tbody>
+                      {displayedAnalyses.map((a) => {
+                        const isGuest = !a.user_name || a.user_name.includes("-") || a.user_name.startsWith("guest_");
+                        const cleanGuestId = a.user_name ? a.user_name.replace("guest_", "").slice(0, 8) : "anon";
+                        const dateObj = a.analyzed_at ? new Date(a.analyzed_at) : null;
+                        const dateStr = dateObj ? dateObj.toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                        const timeStr = dateObj ? dateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+
+                        return (
+                          <tr
+                            key={a.id}
+                            style={{
+                              borderBottom: "1px solid var(--border-subtle)",
+                              transition: "background 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-card-hover)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          >
+                            {/* ID */}
+                            <td style={{ padding: "0.85rem 1rem", fontFamily: "var(--font-mono)", color: "var(--accent-cyan)", fontSize: "0.82rem", fontWeight: 700 }}>
+                              #{a.id}
+                            </td>
+
+                            {/* Associated Product */}
+                            <td style={{ padding: "0.85rem 1rem", maxWidth: 360 }}>
+                              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.65rem" }}>
+                                <div
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: "8px",
+                                    background: "rgba(6, 182, 212, 0.1)",
+                                    border: "1px solid rgba(6, 182, 212, 0.2)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "var(--accent-cyan)",
+                                    flexShrink: 0,
+                                    marginTop: "2px",
+                                  }}
+                                >
+                                  <ShoppingBag size={15} />
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <Link
+                                    to={`/analysis/${a.id}`}
+                                    style={{
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      fontWeight: 700,
+                                      fontSize: "0.88rem",
+                                      color: "var(--text-primary)",
+                                      textDecoration: "none",
+                                      lineHeight: 1.35,
+                                    }}
+                                    title={a.product_title || a.product || "View Analysis"}
+                                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent-cyan)")}
+                                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+                                  >
+                                    {a.product_title || a.product || "Extracted Marketplace Product"}
+                                  </Link>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.25rem", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                                    <span style={{ color: "var(--accent-emerald)", fontWeight: 600 }}>● Decision Ready</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Store Origin & Link */}
+                            <td style={{ padding: "0.85rem 1rem" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-start" }}>
+                                <PlatformBadge platform={a.platform || a.platform_name || "Amazon"} size="sm" />
+                                {a.url && (
+                                  <a
+                                    href={a.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem",
+                                      color: "var(--text-muted)",
+                                      fontSize: "0.74rem",
+                                      textDecoration: "none",
+                                      maxWidth: 190,
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                    title={a.url}
+                                    onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent-cyan)")}
+                                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
+                                  >
+                                    <ExternalLink size={11} style={{ flexShrink: 0 }} />
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Initiated By */}
+                            <td style={{ padding: "0.85rem 1rem" }}>
+                              {isGuest ? (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.3rem",
+                                    background: "rgba(255, 255, 255, 0.04)",
+                                    border: "1px solid var(--border-color)",
+                                    borderRadius: "6px",
+                                    padding: "0.25rem 0.55rem",
+                                    fontSize: "0.76rem",
+                                    fontFamily: "var(--font-mono)",
+                                    color: "var(--text-secondary)",
+                                  }}
+                                  title={`Guest Session: ${a.user_name || "Unknown"}`}
+                                >
+                                  <Users size={12} color="var(--text-muted)" />
+                                  <span>Guest #{cleanGuestId}</span>
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.3rem",
+                                    background: "rgba(6, 182, 212, 0.1)",
+                                    border: "1px solid rgba(6, 182, 212, 0.25)",
+                                    borderRadius: "6px",
+                                    padding: "0.25rem 0.55rem",
+                                    fontSize: "0.78rem",
+                                    fontWeight: 700,
+                                    color: "var(--accent-cyan)",
+                                  }}
+                                >
+                                  <span>👤 {a.user_name}</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Timestamp */}
+                            <td style={{ padding: "0.85rem 1rem" }}>
+                              <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", color: "var(--text-primary)", fontWeight: 600 }}>
+                                {dateStr}
+                              </div>
+                              <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "1px" }}>
+                                {timeStr}
+                              </div>
+                            </td>
+
+                            {/* Actions */}
+                            <td style={{ padding: "0.85rem 1.25rem", textAlign: "right" }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", justifyContent: "flex-end" }}>
+                                <Link
+                                  to={`/analysis/${a.id}`}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{
+                                    padding: "0.35rem 0.65rem",
+                                    fontSize: "0.76rem",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.3rem",
+                                    fontWeight: 600,
+                                  }}
+                                  title="Inspect Full AI Deal Breakdown"
+                                >
+                                  <Eye size={12} />
+                                  <span>Analysis</span>
+                                </Link>
+                                <Link
+                                  to={`/report/${a.id}`}
+                                  className="btn btn-primary btn-sm"
+                                  style={{
+                                    padding: "0.35rem 0.65rem",
+                                    fontSize: "0.76rem",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.3rem",
+                                    fontWeight: 700,
+                                  }}
+                                  title="View Multi-Store Decision Report"
+                                >
+                                  <BarChart3 size={12} />
+                                  <span>Report</span>
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {displayedAnalyses.length === 0 && (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: "center", padding: "4rem 2rem", color: "var(--text-muted)" }}>
+                            <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem" }}>🔍</div>
+                            <div style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
+                              No matching telemetry records found
+                            </div>
+                            <div style={{ fontSize: "0.82rem" }}>
+                              Try clearing your search query or switching to All Platforms
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Footer with Pagination */}
+                <div
+                  style={{
+                    padding: "0.85rem 1.25rem",
+                    borderTop: "1px solid var(--border-color)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "rgba(255, 255, 255, 0.01)",
+                    flexWrap: "wrap",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                    Showing <strong style={{ color: "var(--text-primary)" }}>{displayedAnalyses.length}</strong> records
+                    {analysesTotal > 0 && (
+                      <span> of <strong style={{ color: "var(--text-primary)" }}>{analysesTotal}</strong> total</span>
                     )}
-                  </tbody>
-                </table>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <button
+                      type="button"
+                      disabled={analysesPage <= 1 || analysesLoading}
+                      onClick={() => setAnalysesPage((prev) => Math.max(1, prev - 1))}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        padding: "0.35rem 0.75rem",
+                        fontSize: "0.78rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.3rem",
+                        opacity: analysesPage <= 1 ? 0.4 : 1,
+                        cursor: analysesPage <= 1 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <ChevronLeft size={13} />
+                      <span>Previous</span>
+                    </button>
+
+                    <span
+                      style={{
+                        fontSize: "0.78rem",
+                        fontFamily: "var(--font-mono)",
+                        padding: "0.35rem 0.65rem",
+                        borderRadius: "6px",
+                        background: "var(--bg-card)",
+                        border: "1px solid var(--border-color)",
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      Page {analysesPage}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={analyses.length < 15 || analysesLoading}
+                      onClick={() => setAnalysesPage((prev) => prev + 1)}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        padding: "0.35rem 0.75rem",
+                        fontSize: "0.78rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.3rem",
+                        opacity: analyses.length < 15 ? 0.4 : 1,
+                        cursor: analyses.length < 15 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         )}
 
+        {/* 5. MULTI-STORE OFFERS DIRECTORY */}
         {activeTab === "offers" && (
           <div>
-            <h2 style={{ fontWeight: 800, fontSize: "1.4rem", marginBottom: "1rem" }}>Offers</h2>
-            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", alignItems: "center" }}>
-              <select value={offersPlatform} onChange={(e) => setOffersPlatform(e.target.value)} style={{ ...inputStyle, padding: "0.55rem" }}>
-                <option value="">All Platforms</option>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
+              <div>
+                <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, fontFamily: "var(--font-heading)" }}>
+                  Multi-Store Offers Directory
+                </h1>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: "0.25rem 0 0" }}>
+                  Live retail prices scraped from Amazon, Flipkart, and Croma.
+                </p>
+              </div>
+            </div>
+
+            {/* Platform & Ordering Controls */}
+            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap", alignItems: "center" }}>
+              <select
+                value={offersPlatform}
+                onChange={(e) => setOffersPlatform(e.target.value)}
+                style={{
+                  padding: "0.65rem 0.85rem",
+                  borderRadius: "10px",
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--text-primary)",
+                  fontSize: "0.88rem",
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">All Marketplaces</option>
                 {platforms.map((pl) => (
-                  <option key={pl.id} value={pl.id}>{pl.name}</option>
+                  <option key={pl.id} value={pl.id}>
+                    {pl.name}
+                  </option>
                 ))}
               </select>
-              <select value={offersSort} onChange={(e) => setOffersSort(e.target.value)} style={{ ...inputStyle, padding: "0.55rem" }}>
-                <option value="">Default Sort</option>
-                <option value="price">Price (Low to High)</option>
-                <option value="-price">Price (High to Low)</option>
-                <option value="-rating">Rating (High to Low)</option>
-                <option value="rating">Rating (Low to High)</option>
+
+              <select
+                value={offersSort}
+                onChange={(e) => setOffersSort(e.target.value)}
+                style={{
+                  padding: "0.65rem 0.85rem",
+                  borderRadius: "10px",
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--text-primary)",
+                  fontSize: "0.88rem",
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">Default Ordering</option>
+                <option value="price">Price: Low to High</option>
+                <option value="-price">Price: High to Low</option>
+                <option value="-rating">Rating: Highest First</option>
+                <option value="rating">Rating: Lowest First</option>
               </select>
             </div>
+
             {offersLoading ? (
-              <div style={{ color: "var(--text-secondary)", padding: "2rem", textAlign: "center" }}>Loading offers...</div>
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
+                <RefreshCw size={24} className="spinner" style={{ margin: "0 auto 0.5rem" }} />
+                <div>Fetching live store offers...</div>
+              </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr>
-                      <th style={thStyle}>ID</th>
-                      <th style={thStyle}>Product</th>
-                      <th style={thStyle}>Platform</th>
-                      <th style={thStyle}>Price</th>
-                      <th style={thStyle}>MRP</th>
-                      <th style={thStyle}>Rating</th>
-                      <th style={thStyle}>In Stock</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {offers.map((o) => (
-                      <tr key={o.id}>
-                        <td style={tdStyle}>{o.id}</td>
-                        <td style={{ ...tdStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {o.product_title || o.product || "—"}
-                        </td>
-                        <td style={tdStyle}>
-                          <span style={badgeStyle("purple")}>{o.store_name || o.platform_name || o.platform || "—"}</span>
-                        </td>
-                        <td style={{ ...tdStyle, fontWeight: 700, color: "var(--accent-cyan)" }}>₹{o.current_price || o.price}</td>
-                        <td style={{ ...tdStyle, color: "var(--text-muted)", textDecoration: "line-through" }}>
-                          {o.original_price > 0 ? `₹${o.original_price}` : o.mrp ? `₹${o.mrp}` : "—"}
-                        </td>
-                        <td style={tdStyle}>
-                          {o.rating ? `⭐ ${o.rating}` : "—"}
-                        </td>
-                        <td style={tdStyle}>
-                          {o.in_stock === false ? (
-                            <span style={{ color: "var(--accent-rose)", fontWeight: 600, fontSize: "0.8rem" }}>No</span>
-                          ) : (
-                            <span style={{ color: "#22c55e", fontWeight: 600, fontSize: "0.8rem" }}>Yes</span>
-                          )}
-                        </td>
+              <div className="card-panel" style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 60 }}>ID</th>
+                        <th>Target Product</th>
+                        <th>Marketplace</th>
+                        <th>Live Price</th>
+                        <th>MRP</th>
+                        <th>Rating</th>
+                        <th style={{ textAlign: "right" }}>Availability</th>
                       </tr>
-                    ))}
-                    {offers.length === 0 && (
-                      <tr><td colSpan={7} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>No offers found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {offers.map((o) => (
+                        <tr key={o.id}>
+                          <td style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                            #{o.id}
+                          </td>
+                          <td style={{ maxWidth: 260 }}>
+                            <div
+                              style={{
+                                fontWeight: 600,
+                                color: "var(--text-primary)",
+                                fontSize: "0.85rem",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                              title={o.product_title || o.product}
+                            >
+                              {o.product_title || o.product || "—"}
+                            </div>
+                          </td>
+                          <td>
+                            <PlatformBadge platform={o.store_name || o.platform_name || o.platform} />
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                fontWeight: 800,
+                                color: "var(--accent-cyan)",
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "0.92rem",
+                              }}
+                            >
+                              ₹{Number(o.current_price || o.price).toLocaleString("en-IN")}
+                            </span>
+                          </td>
+                          <td style={{ color: "var(--text-muted)", textDecoration: "line-through", fontFamily: "var(--font-mono)", fontSize: "0.85rem" }}>
+                            {o.original_price > 0
+                              ? `₹${Number(o.original_price).toLocaleString("en-IN")}`
+                              : o.mrp
+                              ? `₹${Number(o.mrp).toLocaleString("en-IN")}`
+                              : "—"}
+                          </td>
+                          <td>
+                            {o.rating ? (
+                              <span style={{ color: "var(--accent-amber)", fontWeight: 600, fontSize: "0.85rem" }}>
+                                ★ {o.rating}
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            {o.in_stock === false ? (
+                              <span className="badge badge-rose" style={{ fontSize: "0.72rem" }}>
+                                Out of Stock
+                              </span>
+                            ) : (
+                              <span className="badge badge-emerald" style={{ fontSize: "0.72rem" }}>
+                                In Stock
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+
+                      {offers.length === 0 && (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                            No store offers match the selected filters.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

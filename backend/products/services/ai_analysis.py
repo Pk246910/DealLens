@@ -1,4 +1,5 @@
 import random
+import hashlib
 from decimal import Decimal
 
 
@@ -191,7 +192,8 @@ class AIAnalysisService:
         matches = comparison.get("matches_found", 0)
 
         insights = CATEGORY_INSIGHTS.get(category, DEFAULT_INSIGHTS)
-        random.seed(hash(title) % 10000)
+        seed_int = int(hashlib.md5(title.encode("utf-8", errors="replace")).hexdigest(), 16) % 10000
+        random.seed(seed_int)
 
         scored_listings = self._score_all_listings(listings)
         best_deal = scored_listings[0] if scored_listings else None
@@ -280,7 +282,7 @@ class AIAnalysisService:
 
         # 3. Review Confidence Score (10%)
         reviews_count = listing.get("reviews_count", 0)
-        if reviews_count and reviews_count > 0:
+        if reviews_count:
             if reviews_count >= 5000:
                 review_confidence = 100
             elif reviews_count >= 1000:
@@ -592,9 +594,17 @@ class AIAnalysisService:
                 "reason": "Best seller reliability and data freshness",
             })
 
-        # Best Alternative (different from best overall)
+        # Best Alternative (prefer different platform from best overall)
         if len(valid) > 1:
-            alt = valid[1] if valid[1].get("score", 0) > 0 else None
+            best_overall_platform = best_overall.get("platform")
+            alt = None
+            for candidate in valid[1:]:
+                if candidate.get("score", 0) > 0:
+                    if not alt:
+                        alt = candidate
+                    if candidate.get("platform") != best_overall_platform:
+                        alt = candidate
+                        break
             if alt:
                 categories.append({
                     "category": "Best Alternative",

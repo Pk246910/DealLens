@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import UserSerializer, RegisterSerializer, ProfileUpdateSerializer
 from django.contrib.auth.models import User
+from products.models import Product, ProductOffer, Wishlist, URLAnalysis, Platform
 
 
 class LoginThrottle(AnonRateThrottle):
@@ -85,6 +86,16 @@ class ChangePasswordView(APIView):
     throttle_classes = [ChangePasswordThrottle]
 
     def post(self, request):
+        """
+        Change the authenticated user's password.
+
+        Request body:
+            old_password  (str) – current password
+            new_password  (str) – desired new password (min 8 chars)
+            refresh_token (str) – the caller's current refresh token;
+                                  send it so it can be blacklisted immediately,
+                                  forcing re-authentication with the new password.
+        """
         user = request.user
         old = request.data.get('old_password')
         new = request.data.get('new_password')
@@ -96,6 +107,15 @@ class ChangePasswordView(APIView):
             return Response({'detail': 'Incorrect password'}, status=status.HTTP_400_BAD_REQUEST)
         user.set_password(new)
         user.save()
+        # Blacklist the old refresh token to invalidate all existing sessions.
+        # Clients must log in again with the new password to obtain fresh tokens.
+        try:
+            refresh_token = request.data.get('refresh_token')
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+        except Exception:
+            pass  # Blacklist app not available or token already invalid
         return Response({'detail': 'Password changed successfully'})
 
 
@@ -104,7 +124,6 @@ class ChangePasswordView(APIView):
 def admin_stats(request):
     if not request.user.is_staff:
         return Response({'detail': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
-    from products.models import Product, ProductOffer, Wishlist, URLAnalysis, Platform
     data = {
         'users': User.objects.count(),
         'products': Product.objects.count(),
@@ -130,8 +149,10 @@ def promote_user(request, pk):
         return Response({'detail': 'Cannot change your own staff status'}, status=status.HTTP_400_BAD_REQUEST)
     action = request.data.get('action', 'promote')
     if action == 'promote':
+        # Grant staff access only — is_staff lets the user access the Django admin
+        # and staff-gated API endpoints. is_superuser is a higher privilege and must
+        # be granted separately (e.g. via Django admin or a dedicated superuser endpoint).
         target.is_staff = True
-        target.is_superuser = True
     elif action == 'demote':
         target.is_staff = False
         target.is_superuser = False

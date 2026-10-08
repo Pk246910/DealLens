@@ -6,7 +6,7 @@ urlpatterns = [
     path('', get_users, name='user-list'),
     path('register/', register_user, name='register'),
     path('login/', ThrottledLoginView.as_view(), name='token_obtain_pair'),
-    path('token/', ThrottledLoginView.as_view(), name='token_obtain'),
+    # Legacy /token/ endpoint removed — use /login/ instead
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('me/', me, name='me'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),

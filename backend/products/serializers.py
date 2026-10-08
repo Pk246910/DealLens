@@ -151,7 +151,8 @@ class WishlistSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Wishlist
-        fields = ["id", "user", "guest_id", "product", "product_details", "added_at"]
+        fields = ["id", "guest_id", "product", "product_details", "added_at"]
+        read_only_fields = ["id", "added_at"]
 
 
 class URLAnalysisSerializer(serializers.ModelSerializer):

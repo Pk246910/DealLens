@@ -169,8 +169,10 @@ class ProductOffer(models.Model):
             try:
                 disc = ((self.original_price - self.current_price) / self.original_price) * 100
                 self.discount_percent = round(disc, 2)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning("ProductOffer discount calculation failed for pk=%s: %s", self.pk, e)
         super().save(*args, **kwargs)
 
     def coupon_is_valid(self) -> bool:
@@ -182,7 +184,6 @@ class ProductOffer(models.Model):
         if not self.coupon_code:
             return True
         try:
-            from django.utils import timezone
             coupons = Coupon.objects.filter(code=self.coupon_code)
             if self.platform_id:
                 coupons = coupons.filter(platform=self.platform)
@@ -287,6 +288,7 @@ class Coupon(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        unique_together = (("code", "platform"),)
 
     def __str__(self):
         return f"{self.code} ({self.platform.name if self.platform else 'Unknown'})"
@@ -448,6 +450,7 @@ class Wishlist(models.Model):
 
     class Meta:
         ordering = ["-added_at"]
+        unique_together = (('user', 'product'),)
 
     def __str__(self):
         return f"Wishlist: {self.product.title}"

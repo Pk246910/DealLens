@@ -21,14 +21,14 @@ CATEGORY_KEYWORDS = {
 
 BRAND_PATTERNS = [
     "Samsung", "Apple", "OnePlus", "Xiaomi", "Realme", "Vivo", "Oppo", "Nothing",
-    "Sony", "LG", "HP", "Dell", "Lenovo", "ASUS", "Acer", "MSI", "Apple",
+    "Sony", "LG", "HP", "Dell", "Lenovo", "ASUS", "Acer", "MSI",
     "Boat", "JBL", "Sennheiser", "Bose", "Noise", "Fire-Boltt", "Amazfit",
     "Nike", "Adidas", "Puma", "Reebok", "Levi", "H&M", "Zara",
     "Philips", "Havells", "Bajaj", "Prestige", "Pigeon",
     "Lakme", "Maybelline", "L'Oreal",
     "Corsair", "Logitech", "Razer", "Keychron",
     "GoPro", "Nikon", "Canon", "Fujifilm",
-    "Dyson", "IFB", "Whirlpool", "LG",
+    "Dyson", "IFB", "Whirlpool",
 ]
 
 

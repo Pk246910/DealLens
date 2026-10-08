@@ -1,26 +1,28 @@
 import React, { useState } from "react";
-import { ClipboardPaste } from "lucide-react";
+import { ClipboardPaste, X, Sparkles, Link2, AlertCircle } from "lucide-react";
+import toast from "react-hot-toast";
 import API from "../api/axios";
+import { getPlatformColor } from "../utils/platforms";
 
-const PLATFORMS = [
-  { name: "Amazon", icon: "🛒", color: "#f59e0b" },
-  { name: "Flipkart", icon: "🛍️", color: "#3b82f6" },
-  { name: "Myntra", icon: "👗", color: "#ec4899" },
-  { name: "AJIO", icon: "👟", color: "#8b5cf6" },
-  { name: "Meesho", icon: "🏷️", color: "#f43f5e" },
-  { name: "Croma", icon: "📺", color: "#06b6d4" },
-  { name: "Reliance Digital", icon: "🏪", color: "#10b981" },
-  { name: "Tata CLiQ", icon: "🏬", color: "#6366f1" },
+export const PLATFORMS = [
+  { name: "Amazon", icon: "🛒", color: getPlatformColor("Amazon") },
+  { name: "Flipkart", icon: "🛍️", color: getPlatformColor("Flipkart") },
+  { name: "Croma", icon: "📺", color: getPlatformColor("Croma") },
+  { name: "Reliance Digital", icon: "🏪", color: getPlatformColor("Reliance Digital") },
+  { name: "Myntra", icon: "👗", color: getPlatformColor("Myntra") },
+  { name: "AJIO", icon: "👟", color: getPlatformColor("AJIO") },
+  { name: "Meesho", icon: "🏷️", color: getPlatformColor("Meesho") },
+  { name: "Tata CLiQ", icon: "🏬", color: getPlatformColor("Tata CLiQ") },
 ];
 
 const ANALYSIS_STEPS = [
-  "Detecting platform...",
-  "Retrieving product page...",
-  "Extracting product information...",
-  "Validating product data...",
-  "Finding matching listings...",
-  "Comparing prices across platforms...",
-  "Preparing comparison...",
+  "Detecting platform origin...",
+  "Retrieving live product listing...",
+  "Extracting prices, specs & seller details...",
+  "Validating product data integrity...",
+  "Matching cross-platform listings...",
+  "Comparing pricing, delivery & reviews...",
+  "Computing explainable Best Deal Score...",
 ];
 
 const UrlAnalyzer = ({ onResult, onLoading }) => {
@@ -43,17 +45,18 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
     if (idx < ANALYSIS_STEPS.length) {
       setStep(ANALYSIS_STEPS[idx]);
       setStepIndex(idx);
-      await new Promise((r) => setTimeout(r, 300 + Math.random() * 200));
+      await new Promise((r) => setTimeout(r, 280 + Math.random() * 180));
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!url.trim()) {
-      setError("Please enter a product URL");
+  const handleAnalyze = async (overrideUrl) => {
+    const targetUrl = (overrideUrl || url).trim();
+    if (!targetUrl) {
+      setError("Please paste a product URL to analyze");
       return;
     }
-    if (!isValidUrl(url.trim())) {
-      setError("Please enter a valid URL");
+    if (!isValidUrl(targetUrl)) {
+      setError("Please enter a valid HTTP/HTTPS URL");
       return;
     }
 
@@ -66,9 +69,8 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
       await advanceStep(1);
       await advanceStep(2);
 
-      // Analysis does live scraping + comparison + rule-based scoring, so it
-      // needs a longer budget than the global 10s axios timeout.
-      const res = await API.post("/analyze-url/", { url: url.trim() }, { timeout: 120000 });
+      // Analysis does live scraping + comparison + rule-based scoring
+      const res = await API.post("/analyze-url/", { url: targetUrl }, { timeout: 120000 });
 
       await advanceStep(3);
       await advanceStep(4);
@@ -81,7 +83,7 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
       if (data?.supported_platforms) {
         setError(`Platform not supported. Supported: ${data.supported_platforms.join(", ")}`);
       } else {
-        setError(data?.error || "Analysis failed. Please try another URL.");
+        setError(data?.error || "Analysis failed. Please try another product URL.");
       }
       onResult?.(null);
     } finally {
@@ -102,158 +104,281 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
       if (text) {
         setUrl(text);
         setError(null);
+        toast.success("URL pasted from clipboard");
       }
-    } catch {}
+    } catch {
+      toast.error("Clipboard permission unavailable. Please paste manually (Ctrl+V).");
+    }
   };
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ display: "flex", gap: "0.75rem", alignItems: "stretch" }}>
-        <div style={{ flex: 1, position: "relative" }}>
+      {/* Main Input Bar */}
+      <div
+        style={{
+          display: "flex",
+          gap: "0.75rem",
+          alignItems: "stretch",
+          flexDirection: "row",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: "1 1 300px", position: "relative" }}>
           <input
             type="url"
             value={url}
-            onChange={(e) => { setUrl(e.target.value); setError(null); }}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setError(null);
+            }}
             onKeyDown={handleKeyDown}
-            placeholder="Paste a product URL (e.g., https://www.flipkart.com/...)"
+            placeholder="Paste a product URL (e.g. https://www.flipkart.com/... or amazon.in/...)"
             disabled={loading}
-            aria-label="Product URL"
+            aria-label="Product URL to analyze"
             style={{
               width: "100%",
-              padding: "0.85rem 5.5rem 0.85rem 2.8rem",
+              padding: "0.95rem 5.8rem 0.95rem 2.85rem",
               background: "var(--bg-card)",
-              border: `1px solid ${error ? "var(--accent-rose)" : "var(--border-color)"}`,
-              borderRadius: "12px",
+              border: `1.5px solid ${error ? "var(--accent-rose)" : "var(--border-color)"}`,
+              borderRadius: "14px",
               color: "var(--text-primary)",
               fontSize: "0.95rem",
               outline: "none",
-              transition: "all 0.2s ease",
+              transition: "border-color 0.2s, box-shadow 0.2s",
+              boxShadow: "var(--shadow-sm)",
+            }}
+            onFocus={(e) => {
+              if (!error) {
+                e.target.style.borderColor = "var(--accent-cyan)";
+                e.target.style.boxShadow = "var(--shadow-glow)";
+              }
+            }}
+            onBlur={(e) => {
+              if (!error) {
+                e.target.style.borderColor = "var(--border-color)";
+                e.target.style.boxShadow = "var(--shadow-sm)";
+              }
             }}
           />
-          <span style={{
-            position: "absolute",
-            left: "0.9rem",
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontSize: "1.1rem",
-            opacity: 0.5,
-          }}>🔗</span>
-          <div style={{
-            position: "absolute",
-            right: "0.5rem",
-            top: "50%",
-            transform: "translateY(-50%)",
-            display: "flex",
-            gap: "0.25rem",
-          }}>
+
+          <span
+            style={{
+              position: "absolute",
+              left: "1rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--accent-cyan)",
+              display: "flex",
+              alignItems: "center",
+              opacity: 0.8,
+            }}
+          >
+            <Link2 size={18} />
+          </span>
+
+          {/* Action buttons inside input */}
+          <div
+            style={{
+              position: "absolute",
+              right: "0.6rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "flex",
+              gap: "0.3rem",
+              alignItems: "center",
+            }}
+          >
             {!loading && (
               <button
+                type="button"
                 onClick={handlePaste}
                 style={{
-                  background: "var(--border-color)",
-                  border: "none",
-                  borderRadius: "6px",
-                  width: 30,
-                  height: 30,
-                  display: "flex",
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "8px",
+                  padding: "0.35rem 0.6rem",
+                  display: "inline-flex",
                   alignItems: "center",
-                  justifyContent: "center",
+                  gap: "0.3rem",
                   cursor: "pointer",
                   color: "var(--text-secondary)",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
                   transition: "all 0.15s ease",
                 }}
                 title="Paste from clipboard"
                 aria-label="Paste URL"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--accent-cyan)";
+                  e.currentTarget.style.borderColor = "var(--accent-cyan)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                  e.currentTarget.style.borderColor = "var(--border-color)";
+                }}
               >
-                <ClipboardPaste size={14} />
+                <ClipboardPaste size={14} /> Paste
               </button>
             )}
+
             {url && !loading && (
               <button
-                onClick={() => { setUrl(""); setError(null); onResult?.(null); }}
+                type="button"
+                onClick={() => {
+                  setUrl("");
+                  setError(null);
+                  onResult?.(null);
+                }}
                 style={{
-                  background: "var(--border-color)",
-                  border: "none",
-                  borderRadius: "6px",
-                  width: 30,
-                  height: 30,
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "8px",
+                  width: 28,
+                  height: 28,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  color: "var(--text-secondary)",
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
+                  color: "var(--text-muted)",
                   transition: "all 0.15s ease",
                 }}
-                title="Clear"
+                title="Clear input"
                 aria-label="Clear URL"
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent-rose)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
               >
-                ✕
+                <X size={15} />
               </button>
             )}
           </div>
         </div>
+
+        {/* Primary Action Button */}
         <button
-          onClick={handleAnalyze}
+          type="button"
+          onClick={() => handleAnalyze()}
           disabled={loading || !url.trim()}
+          className="btn btn-primary"
           style={{
-            padding: "0.85rem 1.75rem",
-            background: loading ? "var(--text-muted)" : "var(--gradient-brand)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "12px",
-            fontWeight: 700,
+            padding: "0.95rem 1.85rem",
             fontSize: "0.95rem",
-            cursor: loading ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
-            transition: "all 0.2s ease",
-            opacity: !url.trim() ? 0.5 : 1,
+            flexShrink: 0,
+            borderRadius: "14px",
           }}
         >
-          {loading ? "Analyzing..." : "🔍 Analyze Product"}
+          {loading ? (
+            <>
+              <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+              <span>Analyzing...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles size={17} />
+              <span>Analyze & Compare</span>
+            </>
+          )}
         </button>
       </div>
 
+      {/* Progress Telemetry Bar (During Live Scraping) */}
       {loading && step && (
-        <div style={{
-          marginTop: "0.75rem",
-          padding: "0.75rem 1rem",
-          background: "rgba(6, 182, 212, 0.1)",
-          border: "1px solid rgba(6, 182, 212, 0.25)",
-          borderRadius: "10px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
-            <div className="spinner" />
-            <span style={{ fontSize: "0.88rem", color: "var(--accent-cyan)", fontWeight: 600 }}>{step}</span>
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "1rem 1.25rem",
+            background: "rgba(6, 182, 212, 0.08)",
+            border: "1px solid rgba(6, 182, 212, 0.25)",
+            borderRadius: "12px",
+            animation: "fadeIn 0.3s ease",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+              <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+              <span style={{ fontSize: "0.88rem", color: "var(--accent-cyan)", fontWeight: 700 }}>
+                {step}
+              </span>
+            </div>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.75rem",
+                color: "var(--text-muted)",
+                fontWeight: 600,
+              }}
+            >
+              Step {stepIndex + 1} of {ANALYSIS_STEPS.length}
+            </span>
           </div>
-          <div style={{ display: "flex", gap: "4px" }}>
+
+          {/* Stepper Progress Indicator */}
+          <div style={{ display: "flex", gap: "5px" }}>
             {ANALYSIS_STEPS.map((_, i) => (
-              <div key={i} style={{
-                flex: 1,
-                height: 3,
-                borderRadius: 2,
-                background: i <= stepIndex ? "var(--accent-cyan)" : "var(--border-color)",
-                transition: "background 0.3s ease",
-              }} />
+              <div
+                key={i}
+                style={{
+                  flex: 1,
+                  height: 4,
+                  borderRadius: 2,
+                  background: i <= stepIndex ? "var(--accent-cyan)" : "rgba(255, 255, 255, 0.08)",
+                  boxShadow: i <= stepIndex ? "0 0 8px rgba(6, 182, 212, 0.5)" : "none",
+                  transition: "background 0.3s ease, box-shadow 0.3s ease",
+                }}
+              />
             ))}
           </div>
         </div>
       )}
 
+      {/* Error Notice */}
       {error && (
-        <div style={{
-          marginTop: "0.75rem",
-          padding: "0.75rem 1rem",
-          background: "rgba(244, 63, 94, 0.1)",
-          border: "1px solid rgba(244, 63, 94, 0.25)",
-          borderRadius: "10px",
-          fontSize: "0.88rem",
-          color: "var(--accent-rose)",
-        }}>
-          {error}
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "0.85rem 1rem",
+            background: "rgba(244, 63, 94, 0.1)",
+            border: "1px solid rgba(244, 63, 94, 0.3)",
+            borderRadius: "12px",
+            fontSize: "0.88rem",
+            color: "var(--accent-rose)",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.6rem",
+            animation: "fadeIn 0.25s ease",
+          }}
+        >
+          <AlertCircle size={18} style={{ flexShrink: 0 }} />
+          <span>{error}</span>
         </div>
       )}
+
+      {/* Supported Store Chips */}
+      <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>
+          Supported Platforms:
+        </span>
+        {PLATFORMS.map((p) => (
+          <span
+            key={p.name}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              padding: "0.15rem 0.5rem",
+              borderRadius: "6px",
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border-color)",
+              fontSize: "0.72rem",
+              color: "var(--text-secondary)",
+              fontWeight: 600,
+            }}
+          >
+            <span>{p.icon}</span>
+            <span>{p.name}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 };

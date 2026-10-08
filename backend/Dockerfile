@@ -17,8 +17,14 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-# Collect static (WhiteNoise serves ./staticfiles)
-RUN python manage.py collectstatic --noinput || true
+# Create a non-root user for security
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
+    && chown -R appuser:appgroup /app
+USER appuser
+
+# Collect static files (requires DJANGO_SECRET_KEY build arg)
+ARG DJANGO_SECRET_KEY=build-time-placeholder
+RUN DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY} python manage.py collectstatic --noinput
 
 EXPOSE 8000
 

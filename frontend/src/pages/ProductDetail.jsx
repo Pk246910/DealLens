@@ -10,11 +10,21 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+import {
+  Heart,
+  Bell,
+  ArrowLeft,
+  ExternalLink,
+  TrendingDown,
+  Activity,
+} from "lucide-react";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import ShareButton from "../components/ShareButton";
-import { SkeletonProductDetail, SkeletonChart } from "../components/Skeleton";
+import PlatformBadge from "../components/PlatformBadge";
+import { SkeletonProductDetail } from "../components/Skeleton";
 import { getProductImage, handleImageError } from "../utils/images";
+import { getPlatformColor } from "../utils/platforms";
 import toast from "react-hot-toast";
 
 const CHART_COLORS = {
@@ -38,10 +48,10 @@ const ProductDetail = () => {
 
   const [wishlisted, setWishlisted] = useState(false);
   const [wishlistId, setWishlistId] = useState(null);
+  const [wishlistSaving, setWishlistSaving] = useState(false);
 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [historyError, setHistoryError] = useState(null);
 
   const [targetPrice, setTargetPrice] = useState("");
   const [alertSaving, setAlertSaving] = useState(false);
@@ -55,7 +65,7 @@ const ProductDetail = () => {
         setLoading(false);
       })
       .catch(() => {
-        setError("Product not found");
+        setError("Product not found or has been removed.");
         setLoading(false);
       });
   }, [id]);
@@ -83,32 +93,38 @@ const ProductDetail = () => {
   useEffect(() => {
     if (!id) return;
     setHistoryLoading(true);
-    setHistoryError(null);
     API.get(`/products/${id}/history/`)
       .then((res) => setHistory(res.data || []))
-      .catch(() => setHistoryError("No price history available yet."))
+      .catch(() => {})
       .finally(() => setHistoryLoading(false));
   }, [id]);
 
   const toggleWishlist = async () => {
     if (!user) {
-      toast.error("Please login to save products");
+      toast.error("Please login to save products to your wishlist");
       return;
     }
-    if (wishlisted && wishlistId) {
-      await API.delete(`/wishlist/${wishlistId}/`);
-      setWishlisted(false);
-      setWishlistId(null);
-      toast.success("Removed from wishlist");
-    } else {
-      const res = await API.post("/wishlist/", {
-        product: Number(id),
-      });
-      setWishlisted(true);
-      setWishlistId(res.data.id);
-      toast.success("Added to wishlist");
+    setWishlistSaving(true);
+    try {
+      if (wishlisted && wishlistId) {
+        await API.delete(`/wishlist/${wishlistId}/`);
+        setWishlisted(false);
+        setWishlistId(null);
+        toast.success("Removed from wishlist");
+      } else {
+        const res = await API.post("/wishlist/", {
+          product: Number(id),
+        });
+        setWishlisted(true);
+        setWishlistId(res.data.id);
+        toast.success("Saved to wishlist");
+      }
+      window.dispatchEvent(new Event("wishlist:changed"));
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to update wishlist");
+    } finally {
+      setWishlistSaving(false);
     }
-    window.dispatchEvent(new Event("wishlist:changed"));
   };
 
   const handleSetAlert = async (e) => {
@@ -126,6 +142,7 @@ const ProductDetail = () => {
       });
       toast.success(`Alert set for ₹${Number(targetPrice).toLocaleString("en-IN")}`);
       setTargetPrice("");
+      window.dispatchEvent(new Event("alert:changed"));
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to set alert");
     } finally {
@@ -134,16 +151,28 @@ const ProductDetail = () => {
   };
 
   if (loading) {
-    return <SkeletonProductDetail />;
+    return (
+      <div className="page-container" style={{ paddingTop: "2.5rem" }}>
+        <SkeletonProductDetail />
+      </div>
+    );
   }
 
   if (error || !product) {
     return (
-      <div
-        className="app-wrapper"
-        style={{ textAlign: "center", padding: "4rem", color: "var(--accent-rose)" }}
-      >
-        {error || "Product not found"}
+      <div className="page-container" style={{ paddingTop: "4rem", textAlign: "center" }}>
+        <div className="card-panel" style={{ maxWidth: 480, margin: "0 auto", padding: "3rem 2rem" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>📦</div>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "var(--accent-rose)", marginBottom: "0.5rem" }}>
+            {error || "Product Not Found"}
+          </h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+            The requested product details could not be retrieved from the catalog.
+          </p>
+          <Link to="/" className="btn btn-secondary btn-sm">
+            ← Return Home
+          </Link>
+        </div>
       </div>
     );
   }
@@ -179,696 +208,524 @@ const ProductDetail = () => {
       return acc;
     }, []);
 
-  const uniqueStores = visibleStores;
-
-  // Latest 10 records for the historical data table (newest first).
-  const recentRows = visibleHistory
-    .filter((h) => h.price > 0)
-    .slice(0, 10);
-
-  const sectionCard = {
-    background: "var(--bg-secondary)",
-    borderRadius: 12,
-    border: "1px solid var(--border-color)",
-    padding: "1.25rem",
-  };
-
-  const sectionTitle = {
-    fontSize: "1.15rem",
-    fontWeight: 800,
-    marginBottom: "1rem",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.4rem",
-  };
-
-  const lowestPrice = offers.length > 0
-    ? Math.min(...offers.map((o) => Number(o.current_price)))
-    : 0;
+  const lowestPrice =
+    offers.length > 0
+      ? Math.min(...offers.map((o) => Number(o.current_price)))
+      : 0;
 
   return (
-    <div
-      className="app-wrapper"
-      style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem 3rem" }}
-    >
-      <Link
-        to="/"
-        style={{
-          color: "var(--accent-cyan)",
-          textDecoration: "none",
-          fontSize: "0.9rem",
-          marginBottom: "1rem",
-          display: "inline-block",
-        }}
-      >
-        ← Back to Home
-      </Link>
-
-      {/* ── Product Info ── */}
+    <div className="page-container" style={{ paddingTop: "2rem" }}>
+      {/* Top Breadcrumb & Controls */}
       <div
         style={{
           display: "flex",
-          gap: "2rem",
+          justifyContent: "space-between",
+          alignItems: "center",
           flexWrap: "wrap",
-          marginBottom: "2rem",
-          animation: "fadeIn 0.4s ease",
+          gap: "1rem",
+          marginBottom: "1.75rem",
         }}
       >
+        <Link
+          to="/"
+          className="btn btn-secondary btn-sm"
+          style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+        >
+          <ArrowLeft size={15} /> Back to Search
+        </Link>
+
+        <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+          <button
+            onClick={toggleWishlist}
+            disabled={wishlistSaving}
+            className="btn btn-secondary btn-sm"
+            style={{
+              borderColor: wishlisted ? "rgba(244, 63, 94, 0.4)" : "var(--border-color)",
+              background: wishlisted ? "rgba(244, 63, 94, 0.12)" : "var(--bg-card)",
+              color: wishlisted ? "var(--accent-rose)" : "var(--text-primary)",
+            }}
+          >
+            <Heart
+              size={15}
+              fill={wishlisted ? "var(--accent-rose)" : "none"}
+              color={wishlisted ? "var(--accent-rose)" : "currentColor"}
+            />
+            <span>{wishlisted ? "Saved" : "Save to Wishlist"}</span>
+          </button>
+
+          <ShareButton title={product.title} price={bestOffer?.current_price} />
+        </div>
+      </div>
+
+      {/* 1. Main Product Overview Panel */}
+      <div
+        className="card-panel"
+        style={{
+          padding: "2rem",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: "2.5rem",
+          alignItems: "center",
+          marginBottom: "2rem",
+        }}
+      >
+        {/* Product Image Frame */}
         <div
           style={{
-            flex: "0 0 300px",
-            background: "var(--bg-secondary)",
-            borderRadius: 16,
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-color)",
+            borderRadius: "16px",
             padding: "1.5rem",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             minHeight: 280,
+            maxWidth: 320,
+            margin: "0 auto",
+            width: "100%",
           }}
         >
-  <img
-      src={getProductImage(product.image_url)}
-      alt={product.title}
-      style={{ maxWidth: "100%", maxHeight: 260, objectFit: "contain" }}
-      onError={handleImageError}
-    />
+          <img
+            src={getProductImage(product.image_url)}
+            alt={product.title}
+            style={{ maxWidth: "100%", maxHeight: 260, objectFit: "contain" }}
+            onError={handleImageError}
+          />
         </div>
 
+        {/* Product Meta & Actions */}
         <div style={{ flex: 1, minWidth: 280 }}>
-          <div
-            style={{
-              fontSize: "0.8rem",
-              color: "var(--accent-cyan)",
-              fontWeight: 700,
-              marginBottom: "0.5rem",
-            }}
-          >
-            {product.category} • {product.brand}
-          </div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.75rem" }}>
-            {product.title}
-          </h1>
-          {bestOffer && (
-            <div
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.6rem" }}>
+            <span
               style={{
-                fontSize: "1.8rem",
-                fontWeight: 800,
-                color: "var(--accent-green)",
-                marginBottom: "0.75rem",
+                fontSize: "0.75rem",
+                color: "var(--accent-cyan)",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
               }}
             >
-              ₹{Number(bestOffer.current_price).toLocaleString("en-IN")}
+              {product.category}
+            </span>
+            {product.brand && (
+              <>
+                <span style={{ color: "var(--text-muted)" }}>•</span>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", fontWeight: 600 }}>
+                  {product.brand}
+                </span>
+              </>
+            )}
+          </div>
+
+          <h1
+            style={{
+              fontSize: "1.45rem",
+              fontWeight: 800,
+              lineHeight: 1.35,
+              marginBottom: "1rem",
+              color: "var(--text-primary)",
+            }}
+          >
+            {product.title}
+          </h1>
+
+          {/* Pricing Highlight */}
+          {bestOffer && (
+            <div style={{ display: "flex", alignItems: "baseline", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
+              <span
+                style={{
+                  fontSize: "2.2rem",
+                  fontWeight: 900,
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--accent-green)",
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                ₹{Number(bestOffer.current_price).toLocaleString("en-IN")}
+              </span>
+
               {bestOffer.original_price > bestOffer.current_price && (
                 <span
                   style={{
-                    fontSize: "0.9rem",
+                    fontSize: "1.1rem",
                     color: "var(--text-muted)",
                     textDecoration: "line-through",
-                    marginLeft: "0.75rem",
+                    fontFamily: "var(--font-mono)",
                   }}
                 >
                   ₹{Number(bestOffer.original_price).toLocaleString("en-IN")}
                 </span>
               )}
+
               {bestOffer.discount_percent > 0 && (
-                <span
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "var(--accent-green)",
-                    marginLeft: "0.5rem",
-                    fontWeight: 600,
-                  }}
-                >
-                  {bestOffer.discount_percent}% off
+                <span className="badge badge-rose" style={{ fontSize: "0.82rem" }}>
+                  <TrendingDown size={14} /> {bestOffer.discount_percent}% OFF
                 </span>
               )}
+
+              <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "auto" }}>
+                Best price on <strong style={{ color: "var(--text-primary)" }}>{bestOffer.store_name}</strong>
+              </span>
             </div>
           )}
-          <div
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              flexWrap: "wrap",
-              marginTop: "1rem",
-            }}
-          >
-            <button
-              onClick={toggleWishlist}
-              style={{
-                padding: "0.6rem 1.2rem",
-                borderRadius: 8,
-                border: "1px solid var(--border-color)",
-                background: wishlisted ? "rgba(244,63,94,0.15)" : "var(--bg-card)",
-                color: wishlisted ? "var(--accent-rose)" : "var(--text-primary)",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {wishlisted ? "❤️ Saved" : user ? "🤍 Save" : "🔒 Login to Save"}
-            </button>
+
+          {/* Action CTAs */}
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "1rem" }}>
             {bestOffer?.product_url && (
               <a
                 href={bestOffer.product_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  padding: "0.6rem 1.2rem",
-                  borderRadius: 8,
-                  background: "var(--gradient-brand)",
-                  color: "#fff",
-                  fontWeight: 700,
-                  textDecoration: "none",
-                }}
+                className="btn btn-success btn-md"
+                style={{ display: "inline-flex", gap: "0.45rem" }}
               >
-                Buy at {bestOffer.store_name} →
+                <span>Buy at {bestOffer.store_name}</span>
+                <ExternalLink size={15} />
               </a>
             )}
-            <ShareButton title={product.title} price={bestOffer?.current_price} />
+
+            {user && (
+              <button
+                onClick={() =>
+                  document.getElementById("alert-section")?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }
+                className="btn btn-secondary btn-md"
+                style={{ display: "inline-flex", gap: "0.45rem" }}
+              >
+                <Bell size={15} />
+                <span>Track Price Drop</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Platform Comparison ── */}
+      {/* 2. Multi-Store Price Comparison Table */}
       {offers.length > 0 && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={sectionTitle}>📊 Platform Comparison</h2>
-          <div style={{ ...sectionCard, padding: 0, overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: "2px solid var(--border-color)",
-                      textAlign: "left",
-                    }}
-                  >
-                    <th style={{ padding: "0.75rem 0.75rem" }}>Platform</th>
-                    <th style={{ padding: "0.75rem 0.75rem", textAlign: "right" }}>Price</th>
-                    <th style={{ padding: "0.75rem 0.75rem", textAlign: "right" }}>MRP</th>
-                    <th style={{ padding: "0.75rem 0.75rem", textAlign: "right" }}>Discount</th>
-                    <th style={{ padding: "0.75rem 0.75rem", textAlign: "right" }}>Rating</th>
-                    <th style={{ padding: "0.75rem 0.75rem", textAlign: "center" }}>Delivery</th>
-                    <th style={{ padding: "0.75rem 0.75rem" }}>Offers</th>
-                    <th style={{ padding: "0.75rem 0.75rem" }}>Coupons</th>
-                    <th style={{ padding: "0.75rem 0.75rem", textAlign: "center" }}>Stock</th>
-                    <th style={{ padding: "0.75rem 0.75rem" }}>Link</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {offers.map((o, i) => {
-                    const isBest = Number(o.current_price) === lowestPrice && offers.length > 1;
-                    return (
-                      <tr
-                        key={o.id || i}
-                        style={{
-                          borderTop: "1px solid var(--border-color)",
-                          background: isBest
-                            ? "rgba(16,185,129,0.06)"
-                            : "transparent",
-                          transition: "background 0.2s ease",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = isBest
-                            ? "rgba(16,185,129,0.12)"
-                            : "var(--bg-card-hover)")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = isBest
-                            ? "rgba(16,185,129,0.06)"
-                            : "transparent")
-                        }
-                      >
-                        <td style={{ padding: "0.75rem 0.75rem", fontWeight: 600 }}>
+        <section className="card-panel" style={{ marginBottom: "2rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div>
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <Activity size={18} color="var(--accent-cyan)" /> Cross-Store Offer Comparison
+              </h2>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+                Comparing pricing, coupon availability, and shipping across {offers.length} merchants
+              </p>
+            </div>
+          </div>
+
+          <div className="table-responsive">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem", minWidth: 700 }}>
+              <thead>
+                <tr style={{ color: "var(--text-muted)", borderBottom: "2px solid var(--border-color)", textAlign: "left" }}>
+                  <th style={{ padding: "0.85rem 1rem" }}>Store</th>
+                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Price</th>
+                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Original MRP</th>
+                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Discount</th>
+                  <th style={{ padding: "0.85rem 1rem", textAlign: "center" }}>Delivery</th>
+                  <th style={{ padding: "0.85rem 1rem" }}>Coupon</th>
+                  <th style={{ padding: "0.85rem 1rem", textAlign: "center" }}>Stock</th>
+                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Store Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {offers.map((o, i) => {
+                  const isBest = Number(o.current_price) === lowestPrice && offers.length > 1;
+
+                  return (
+                    <tr
+                      key={o.id || i}
+                      style={{
+                        background: isBest ? "rgba(16, 185, 129, 0.08)" : "transparent",
+                        borderBottom: "1px solid var(--border-subtle)",
+                      }}
+                    >
+                      <td style={{ padding: "0.85rem 1rem", fontWeight: 700 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                          <PlatformBadge platform={o.store_name} size="sm" />
                           {isBest && (
                             <span
                               style={{
-                                fontSize: "0.65rem",
                                 background: "var(--accent-green)",
                                 color: "#fff",
+                                fontSize: "0.62rem",
+                                fontWeight: 800,
                                 padding: "0.1rem 0.4rem",
-                                borderRadius: 4,
-                                marginRight: "0.4rem",
-                                fontWeight: 700,
+                                borderRadius: 999,
                               }}
                             >
-                              BEST
+                              LOWEST
                             </span>
                           )}
-                          {o.store_name}
-                        </td>
-                        <td
-                          style={{
-                            padding: "0.75rem 0.75rem",
-                            textAlign: "right",
-                            fontWeight: 700,
-                            color: isBest ? "var(--accent-green)" : "var(--text-primary)",
-                          }}
-                        >
-                          ₹{Number(o.current_price).toLocaleString("en-IN")}
-                        </td>
-                        <td
-                          style={{
-                            padding: "0.75rem 0.75rem",
-                            textAlign: "right",
-                            color: "var(--text-muted)",
-                            textDecoration: o.original_price > o.current_price ? "line-through" : "none",
-                          }}
-                        >
-                          {o.original_price > o.current_price
-                            ? `₹${Number(o.original_price).toLocaleString("en-IN")}`
-                            : "—"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "0.75rem 0.75rem",
-                            textAlign: "right",
-                            color: o.discount_percent > 0 ? "var(--accent-green)" : "var(--text-muted)",
-                            fontWeight: o.discount_percent > 0 ? 700 : 400,
-                          }}
-                        >
-                          {o.discount_percent > 0 ? `${o.discount_percent}%` : "—"}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.75rem", textAlign: "right" }}>
-                          {o.rating ? (
-                            <span>
-                              {o.rating}★
-                              {o.reviews_count > 0 && (
-                                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                                  {" "}({o.reviews_count.toLocaleString()})
-                                </span>
-                              )}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.75rem", textAlign: "center" }}>
-                          {o.delivery_days != null ? (
-                            <span style={{ fontSize: "0.8rem" }}>
-                              {o.delivery_days === 0 ? (
-                                <span style={{ color: "var(--accent-green)" }}>Today</span>
-                              ) : o.delivery_days === 1 ? (
-                                <span style={{ color: "var(--accent-green)" }}>Tomorrow</span>
-                              ) : (
-                                <span>{o.delivery_days} days</span>
-                              )}
-                              {o.delivery_time && (
-                                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                                  {o.delivery_time}
-                                </div>
-                              )}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.75rem" }}>
-                          {o.coupon_code && o.coupon_valid !== false ? (
-                            <span
-                              style={{
-                                fontSize: "0.75rem",
-                                padding: "0.15rem 0.5rem",
-                                borderRadius: 4,
-                                background: "rgba(245,158,11,0.12)",
-                                color: "#f59e0b",
-                                fontWeight: 600,
-                                border: "1px dashed rgba(245,158,11,0.3)",
-                              }}
-                            >
-                              {o.coupon_code}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.75rem" }}>
-                          {o.coupon_discount > 0 ? (
-                            <span
-                              style={{
-                                fontSize: "0.75rem",
-                                padding: "0.15rem 0.5rem",
-                                borderRadius: 4,
-                                background: "rgba(16,185,129,0.12)",
-                                color: "var(--accent-green)",
-                                fontWeight: 600,
-                              }}
-                            >
-                              ₹{o.coupon_discount} off
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.75rem", textAlign: "center" }}>
-                          {o.in_stock ? (
-                            <span style={{ color: "var(--accent-green)" }}>In Stock</span>
-                          ) : (
-                            <span style={{ color: "var(--accent-rose)" }}>Out</span>
-                          )}
-                        </td>
-                        <td style={{ padding: "0.75rem 0.75rem" }}>
-                          {o.product_url ? (
-                            <a
-                              href={o.product_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.3rem",
-                                padding: "0.3rem 0.6rem",
-                                background: "rgba(6,182,212,0.1)",
-                                color: "var(--accent-cyan)",
-                                borderRadius: "6px",
-                                fontWeight: 600,
-                                fontSize: "0.75rem",
-                                textDecoration: "none",
-                                border: "1px solid rgba(6,182,212,0.2)",
-                              }}
-                            >
-                              View on {o.store_name} ↗
-                            </a>
-                          ) : (
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Link unavailable</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+                        </div>
+                      </td>
 
-      {/* ── Price History ── */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={sectionTitle}>📈 Price History</h2>
-        <div style={sectionCard}>
-          {historyLoading ? (
-            <SkeletonChart height={260} />
-          ) : historyError || history.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "2rem",
-                color: "var(--text-muted)",
-              }}
-            >
-              <div style={{ fontSize: "1.8rem", marginBottom: "0.5rem", opacity: 0.4 }}>
-                📊
-              </div>
-              <div style={{ fontSize: "0.9rem" }}>
-                {historyError || "No price history yet."}
-              </div>
-              <div style={{ fontSize: "0.8rem", marginTop: "0.25rem" }}>
-                History is tracked each time this product is analyzed.
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Platform filter pills */}
-              {allStores.length > 1 && (
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-                  {allStores.map((s) => {
-                    const off = hiddenStores.includes(s);
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => toggleStore(s)}
-                        title={off ? `Show ${s}` : `Hide ${s}`}
+                      <td
                         style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.35rem",
-                          fontSize: "0.75rem",
-                          fontWeight: 700,
-                          padding: "0.3rem 0.7rem",
-                          borderRadius: 999,
-                          cursor: "pointer",
-                          border: `1px solid ${CHART_COLORS[s] || "#06b6d4"}55`,
-                          background: off ? "transparent" : `${CHART_COLORS[s] || "#06b6d4"}18`,
-                          color: off ? "var(--text-muted)" : "var(--text-primary)",
-                          opacity: off ? 0.55 : 1,
+                          padding: "0.85rem 1rem",
+                          textAlign: "right",
+                          fontWeight: 800,
+                          fontFamily: "var(--font-mono)",
+                          color: isBest ? "var(--accent-green)" : "var(--text-primary)",
                         }}
                       >
-                        <span style={{
-                          width: 8, height: 8, borderRadius: "50%",
-                          background: CHART_COLORS[s] || "#06b6d4",
-                          opacity: off ? 0.3 : 1,
-                        }} />
-                        {s} {off ? "＋" : "✓"}
-                      </button>
-                    );
-                  })}
-                  {hiddenStores.length > 0 && (
-                    <button
-                      onClick={() => setHiddenStores([])}
-                      style={{
-                        fontSize: "0.75rem", fontWeight: 700, padding: "0.3rem 0.7rem",
-                        borderRadius: 999, cursor: "pointer",
-                        border: "1px solid var(--border-color)", background: "var(--bg-card)",
-                        color: "var(--accent-cyan)",
-                      }}
-                    >
-                      Show all
-                    </button>
-                  )}
-                </div>
-              )}
-              <div style={{ width: "100%", height: 300 }}>
-                <ResponsiveContainer>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="var(--text-secondary)"
-                      fontSize={11}
-                    />
-                    <YAxis
-                      stroke="var(--text-secondary)"
-                      fontSize={11}
-                      tickFormatter={(v) =>
-                        v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`
-                      }
-                      tickCount={6}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--bg-card)",
-                        borderColor: "var(--border-color)",
-                        borderRadius: 10,
-                        color: "var(--text-primary)",
-                      }}
-                      formatter={(val, name) => [
-                        `₹${Number(val).toLocaleString("en-IN")}`,
-                        name,
-                      ]}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      iconType="circle"
-                      iconSize={8}
-                      wrapperStyle={{ fontSize: "0.8rem", fontWeight: 600, paddingTop: "0.5rem" }}
-                    />
-                    {uniqueStores.map((s) => (
-                      <Line
-                        key={s}
-                        type="monotone"
-                        dataKey={s}
-                        stroke={CHART_COLORS[s] || "#06b6d4"}
-                        strokeWidth={2.5}
-                        dot={{ r: 3 }}
-                        activeDot={{ r: 5 }}
-                        connectNulls
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+                        ₹{Number(o.current_price).toLocaleString("en-IN")}
+                      </td>
 
-              {/* Historical data table */}
-              {recentRows.length > 0 && (
-                <div style={{ marginTop: "1.25rem" }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 800, marginBottom: "0.5rem" }}>
-                    🕘 Historical data <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(latest {recentRows.length} records)</span>
-                  </div>
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
-                      <thead>
-                        <tr style={{ color: "var(--text-secondary)", borderBottom: "2px solid var(--border-color)", textAlign: "left" }}>
-                          <th style={{ padding: "0.5rem" }}>Date</th>
-                          <th style={{ padding: "0.5rem" }}>Platform</th>
-                          <th style={{ padding: "0.5rem", textAlign: "right" }}>Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentRows.map((h, i) => (
-                          <tr key={h.id || i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                            <td style={{ padding: "0.5rem", color: "var(--text-secondary)" }}>
-                              {new Date(h.recorded_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                            </td>
-                            <td style={{ padding: "0.5rem", fontWeight: 600 }}>
-                              <span style={{ color: CHART_COLORS[h.store_name] || "var(--accent-cyan)" }}>●</span> {h.store_name}
-                            </td>
-                            <td style={{ padding: "0.5rem", textAlign: "right", fontWeight: 700 }}>
-                              ₹{Number(h.price).toLocaleString("en-IN")}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                      <td
+                        style={{
+                          padding: "0.85rem 1rem",
+                          textAlign: "right",
+                          color: "var(--text-muted)",
+                          textDecoration: o.original_price > o.current_price ? "line-through" : "none",
+                          fontFamily: "var(--font-mono)",
+                        }}
+                      >
+                        {o.original_price > o.current_price
+                          ? `₹${Number(o.original_price).toLocaleString("en-IN")}`
+                          : "—"}
+                      </td>
 
-      {/* ── Set Price Alert ── */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={sectionTitle}>🔔 Set Price Alert</h2>
-        <div style={sectionCard}>
-          {user ? (
-            <>
-              <form
-                onSubmit={handleSetAlert}
-                style={{
-                  display: "flex",
-                  gap: "0.5rem",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-color)",
-                    borderRadius: 8,
-                    padding: "0 0.6rem",
-                  }}
-                >
-                  <span
+                      <td
+                        style={{
+                          padding: "0.85rem 1rem",
+                          textAlign: "right",
+                          color: o.discount_percent > 0 ? "var(--accent-green)" : "var(--text-muted)",
+                          fontWeight: 700,
+                          fontFamily: "var(--font-mono)",
+                        }}
+                      >
+                        {o.discount_percent > 0 ? `${o.discount_percent}%` : "—"}
+                      </td>
+
+                      <td style={{ padding: "0.85rem 1rem", textAlign: "center", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                        {o.delivery_days ? `${o.delivery_days} day${o.delivery_days > 1 ? "s" : ""}` : "Standard"}
+                      </td>
+
+                      <td style={{ padding: "0.85rem 1rem" }}>
+                        {o.coupon_code ? (
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              padding: "0.15rem 0.45rem",
+                              background: "rgba(245, 158, 11, 0.12)",
+                              color: "var(--accent-amber)",
+                              borderRadius: "4px",
+                              fontWeight: 700,
+                              fontFamily: "var(--font-mono)",
+                            }}
+                          >
+                            {o.coupon_code}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "0.85rem 1rem", textAlign: "center" }}>
+                        {o.in_stock === false ? (
+                          <span style={{ color: "var(--accent-rose)", fontWeight: 700, fontSize: "0.8rem" }}>Out</span>
+                        ) : (
+                          <span style={{ color: "var(--accent-green)", fontWeight: 700, fontSize: "0.8rem" }}>In Stock</span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "0.85rem 1rem", textAlign: "right" }}>
+                        {o.product_url ? (
+                          <a
+                            href={o.product_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-secondary btn-sm"
+                            style={{ display: "inline-flex", gap: "0.35rem", fontSize: "0.78rem" }}
+                          >
+                            <span>Buy</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Unavailable</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* 3. Recharts 30-Day Historical Price Movement */}
+      <section className="card-panel" style={{ marginBottom: "2rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1.25rem" }}>
+          <div>
+            <h2 style={{ fontSize: "1.15rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <Activity size={18} color="var(--accent-purple)" /> 30-Day Price Movement Trends
+            </h2>
+            <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+              Historical daily price telemetry across tracked platforms
+            </p>
+          </div>
+
+          {/* Store Filter Chips */}
+          {allStores.length > 1 && (
+            <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+              {allStores.map((s) => {
+                const isHidden = hiddenStores.includes(s);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleStore(s)}
                     style={{
-                      color: "var(--text-muted)",
+                      padding: "0.25rem 0.6rem",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border-color)",
+                      background: isHidden ? "transparent" : "var(--bg-card)",
+                      color: isHidden ? "var(--text-muted)" : "var(--text-primary)",
+                      fontSize: "0.72rem",
                       fontWeight: 600,
-                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      opacity: isHidden ? 0.45 : 1,
+                      textDecoration: isHidden ? "line-through" : "none",
                     }}
                   >
-                    ₹
-                  </span>
-                  <input
-                    type="number"
-                    placeholder="Target price"
-                    value={targetPrice}
-                    onChange={(e) => setTargetPrice(e.target.value)}
-                    required
-                    min="1"
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      outline: "none",
-                      color: "var(--text-primary)",
-                      fontSize: "0.9rem",
-                      padding: "0.55rem 0.4rem",
-                      width: 140,
-                    }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={alertSaving || !targetPrice}
-                  style={{
-                    padding: "0.55rem 1.2rem",
-                    borderRadius: 8,
-                    border: "none",
-                    background: "var(--gradient-brand)",
-                    color: "#fff",
-                    fontWeight: 700,
-                    fontSize: "0.85rem",
-                    cursor: alertSaving ? "not-allowed" : "pointer",
-                    opacity: alertSaving || !targetPrice ? 0.6 : 1,
-                    transition: "opacity 0.2s ease",
-                  }}
-                >
-                  {alertSaving ? "Setting..." : "Set Alert"}
-                </button>
-              </form>
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  fontSize: "0.75rem",
-                  color: "var(--text-muted)",
-                }}
-              >
-                You'll be notified when the price drops to or below your target.
-              </div>
-            </>
-          ) : (
-            <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
-              <div
-                style={{
-                  fontSize: "0.85rem",
-                  color: "var(--text-secondary)",
-                  marginBottom: "0.75rem",
-                }}
-              >
-                Want to set a price alert?
-              </div>
-              <Link
-                to="/login"
-                style={{
-                  display: "inline-block",
-                  padding: "0.5rem 1rem",
-                  background: "var(--accent-cyan)",
-                  color: "#fff",
-                  borderRadius: 8,
-                  textDecoration: "none",
-                  fontWeight: 700,
-                  fontSize: "0.85rem",
-                }}
-              >
-                Login to Set Alert
-              </Link>
+                    {s}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
-      </div>
 
-      {/* ── Specifications ── */}
-      {product.specifications && Object.keys(product.specifications).length > 0 && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={sectionTitle}>📋 Specifications</h2>
-          <div style={sectionCard}>
-            {Object.entries(product.specifications).map(([k, v]) => (
-              <div
-                key={k}
-                style={{
-                  display: "flex",
-                  padding: "0.4rem 0",
-                  borderBottom: "1px solid var(--border-color)",
-                }}
-              >
-                <span
-                  style={{
-                    flex: "0 0 200px",
-                    color: "var(--text-secondary)",
-                    fontWeight: 600,
+        {historyLoading ? (
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+            Loading historical telemetry...
+          </div>
+        ) : chartData.length > 0 ? (
+          <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                <XAxis dataKey="date" tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
+                <YAxis
+                  tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(v) => `₹${Number(v).toLocaleString("en-IN")}`}
+                  contentStyle={{
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "10px",
                     fontSize: "0.85rem",
                   }}
-                >
-                  {k}
-                </span>
-                <span style={{ fontSize: "0.85rem" }}>{v}</span>
+                />
+                <Legend />
+                {visibleStores.map((s) => (
+                  <Line
+                    key={s}
+                    type="monotone"
+                    dataKey={s}
+                    stroke={CHART_COLORS[s] || getPlatformColor(s, "var(--accent-cyan)")}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: "2.5rem", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+            No price fluctuation recorded in the last 30 days. Listing remains at launch price.
+          </div>
+        )}
+      </section>
+
+      {/* 4. Automated 30-Day Price Alert Setter Form */}
+      {user && (
+        <section id="alert-section" className="card-panel card-glow" style={{ marginBottom: "2rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", marginBottom: "0.5rem" }}>
+            <Bell size={18} color="var(--accent-amber)" />
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 800 }}>
+              Set Price Drop Notification
+            </h3>
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginBottom: "1rem", maxWidth: 650 }}>
+            Enter your target purchase price. Our background monitor will notify you when this item drops below your target.
+          </p>
+
+          <form onSubmit={handleSetAlert} style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "10px",
+                padding: "0 0.85rem",
+                width: 220,
+              }}
+            >
+              <span style={{ color: "var(--text-muted)", fontWeight: 700, fontSize: "0.95rem" }}>₹</span>
+              <input
+                type="number"
+                placeholder="Target price"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                required
+                min="1"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "var(--text-primary)",
+                  fontSize: "0.95rem",
+                  padding: "0.7rem 0.5rem",
+                  width: "100%",
+                  fontFamily: "var(--font-mono)",
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={alertSaving || !targetPrice}
+              className="btn btn-primary"
+              style={{ padding: "0.7rem 1.4rem" }}
+            >
+              {alertSaving ? "Saving..." : "Set Price Alert"}
+            </button>
+          </form>
+        </section>
+      )}
+
+      {/* 5. Technical Specifications */}
+      {product.specifications && Object.keys(product.specifications).length > 0 && (
+        <section className="card-panel">
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 800, marginBottom: "1rem" }}>
+            📋 Specifications
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "0.6rem" }}>
+            {Object.entries(product.specifications).map(([key, val]) => (
+              <div
+                key={key}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "0.65rem 0.85rem",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "8px",
+                  fontSize: "0.82rem",
+                }}
+              >
+                <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{key}</span>
+                <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>{String(val)}</span>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

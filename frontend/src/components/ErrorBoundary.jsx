@@ -11,7 +11,9 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
+    if (import.meta.env.DEV) {
+      console.error('ErrorBoundary caught:', error, errorInfo);
+    }
   }
 
   render() {
@@ -58,7 +60,7 @@ class ErrorBoundary extends React.Component {
               Refresh Page
             </button>
             <button
-              onClick={() => window.location.href = "/"}
+              onClick={() => { window.location.href = "/"; }}
               style={{
                 padding: "0.65rem 1.5rem",
                 borderRadius: "10px",

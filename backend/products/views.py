@@ -1,10 +1,10 @@
 import logging
-from decimal import Decimal
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from django.db.models import Q, Min, Max, Avg, Count
 from .models import Product, Wishlist, PriceHistory, ProductOffer, URLAnalysis, Platform
 
@@ -34,7 +34,7 @@ class WishlistViewSet(viewsets.ModelViewSet):
         user = self.request.user
         product = serializer.validated_data.get("product")
         if Wishlist.objects.filter(user=user, product=product).exists():
-            return
+            raise ValidationError({"detail": "This product is already in your wishlist."})
         serializer.save(user=user)
 
 
@@ -165,6 +165,10 @@ class AnalyzeURLView(APIView):
 
         normalized = None
         extraction_ok = False
+        extraction_method = "none"
+        extraction_confidence = "failed"
+        extraction_updated = ""
+        extraction_fields = {}
 
         try:
             from .services.extract.pipeline import extract_product
@@ -721,6 +725,14 @@ class ProductPriceHistoryView(APIView):
         product = get_object_or_404(Product, pk=pk)
         store = request.query_params.get("store_name", "").strip()
         qs = PriceHistory.objects.filter(product=product)
+        # Only stores that currently offer this product have meaningful
+        # history. Stale rows from stores with no live offer (bad seed
+        # artifacts, e.g. Rs 4k lines under a Rs 40k item) would otherwise
+        # pollute every price chart fed by this endpoint.
+        offered_stores = ProductOffer.objects.filter(
+            product=product
+        ).values_list("store_name", flat=True).distinct()
+        qs = qs.filter(store_name__in=list(offered_stores))
         if store:
             qs = qs.filter(store_name=store)
         qs = qs.order_by("-recorded_at")[:300]

@@ -37,6 +37,7 @@ Thumbs.db
 
 # Old nested Git metadata
 .git_old/
+.git_backup/
 
 # Obsolete/debug scripts not part of the final application
 backend/list_products.py

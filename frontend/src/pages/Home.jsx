@@ -5,6 +5,9 @@ import AnalysisResult from "../components/AnalysisResult";
 import { useAuth } from "../context/AuthContext";
 import API from "../api/axios";
 import { getProductImage, handleImageError } from "../utils/images";
+import PlatformBadge from "../components/PlatformBadge";
+import { Sparkles, ArrowRight, ShieldCheck, Zap, BarChart3 } from "lucide-react";
+import homeHeroBg from "../assets/home-hero-bg.jpg";
 
 const Home = () => {
   const [result, setResult] = useState(null);
@@ -21,14 +24,17 @@ const Home = () => {
     }
   }, [user]);
 
-  const handleResult = useCallback((data) => {
-    setLoading(false);
-    if (data && data.id) {
-      navigate(`/analysis/${data.id}`, { state: { analysis: data } });
-    } else {
-      setResult(data);
-    }
-  }, [navigate]);
+  const handleResult = useCallback(
+    (data) => {
+      setLoading(false);
+      if (data && data.id) {
+        navigate(`/analysis/${data.id}`, { state: { analysis: data } });
+      } else {
+        setResult(data);
+      }
+    },
+    [navigate]
+  );
 
   const handleLoading = useCallback((isLoading) => {
     setLoading(isLoading);
@@ -36,176 +42,361 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="app-wrapper" style={{ padding: "0 1.5rem 4rem", maxWidth: 1100, margin: "0 auto" }}>
-      {/* Hero Section */}
-      <section style={{ textAlign: "center", padding: "3rem 0 2rem" }}>
-        <div style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "0.4rem",
-          padding: "0.35rem 0.9rem",
-          background: "rgba(6, 182, 212, 0.1)",
-          border: "1px solid rgba(6, 182, 212, 0.25)",
-          borderRadius: "999px",
-          color: "var(--accent-cyan)",
-          fontSize: "0.8rem",
-          fontWeight: 700,
-          marginBottom: "1.25rem",
-          animation: "fadeInDown 0.5s ease both",
-        }}>
-          🤖 AI-Powered Comparison
+    <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}>
+      {/* Home Hero 3D Theme Backdrop */}
+      <div
+        className="home-hero-backdrop"
+        style={{
+          backgroundImage: `var(--home-hero-overlay), url(${homeHeroBg})`,
+        }}
+      />
+
+      <div className="page-container" style={{ position: "relative", zIndex: 1, paddingTop: "2.75rem" }}>
+        {/* Hero Section */}
+      <section style={{ textAlign: "center", paddingBottom: "2rem" }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.45rem",
+            padding: "0.35rem 0.95rem",
+            background: "rgba(6, 182, 212, 0.1)",
+            border: "1px solid rgba(6, 182, 212, 0.28)",
+            borderRadius: "999px",
+            color: "var(--accent-cyan)",
+            fontSize: "0.78rem",
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            marginBottom: "1.25rem",
+            animation: "fadeInDown 0.5s ease both",
+          }}
+        >
+          <Sparkles size={13} /> AI-Powered Decision Support
         </div>
-        <h1 style={{ fontSize: "2.75rem", fontWeight: 800, marginBottom: "0.75rem", letterSpacing: "-0.03em", animation: "fadeInDown 0.5s 0.1s ease both" }}>
-          Paste. Compare.{" "}
-          <span style={{ background: "var(--gradient-brand)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            Save.
+
+        <h1
+          style={{
+            fontSize: "clamp(2rem, 5vw, 3.25rem)",
+            fontWeight: 800,
+            lineHeight: 1.15,
+            letterSpacing: "-0.03em",
+            marginBottom: "1rem",
+            animation: "fadeInDown 0.5s 0.1s ease both",
+          }}
+        >
+          Compare Across Stores.{" "}
+          <span
+            style={{
+              background: "var(--gradient-brand)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            Decide Smarter.
           </span>
         </h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: "1.05rem", maxWidth: 620, margin: "0 auto 2.5rem", lineHeight: 1.6, animation: "fadeInDown 0.5s 0.2s ease both" }}>
-          Paste a product URL from any supported platform. ShopSmart identifies the product,
-          compares prices across <strong style={{ color: "var(--accent-cyan)" }}>8 platforms</strong>, and recommends the best deal with AI.
+
+        <p
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: "1.05rem",
+            maxWidth: 680,
+            margin: "0 auto 2rem",
+            lineHeight: 1.6,
+            animation: "fadeInDown 0.5s 0.2s ease both",
+          }}
+        >
+          Paste any product URL from Amazon, Flipkart, Croma, Myntra & more. ShopSmart cross-scrapes alternative stores, analyzes prices & ratings, and computes an explainable <strong>Best Deal Score</strong> before you buy.
         </p>
+
+        {/* Feature Value Pills */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "1.25rem",
+            flexWrap: "wrap",
+            marginBottom: "2.5rem",
+            fontSize: "0.82rem",
+            color: "var(--text-muted)",
+            fontWeight: 600,
+            animation: "fadeInDown 0.5s 0.25s ease both",
+          }}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+            <Zap size={14} color="var(--accent-cyan)" /> Live Marketplace Extraction
+          </span>
+          <span>•</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+            <BarChart3 size={14} color="var(--accent-green)" /> 8-Dimension Deal Scoring
+          </span>
+          <span>•</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+            <ShieldCheck size={14} color="var(--accent-purple)" /> 100% Unbiased Recommendations
+          </span>
+        </div>
       </section>
 
-      {/* URL Analyzer */}
-      <div style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--border-color)",
-        borderRadius: "16px",
-        padding: "1.5rem",
-        boxShadow: "var(--shadow-card)",
-        marginBottom: "2.5rem",
-        animation: "slideUp 0.4s 0.3s ease both",
-      }}>
+      {/* URL Analyzer Panel */}
+      <div
+        className="card-glass card-glow"
+        style={{
+          padding: "2rem",
+          marginBottom: "3.5rem",
+          animation: "slideUp 0.4s 0.3s ease both",
+        }}
+      >
         <UrlAnalyzer onResult={handleResult} onLoading={handleLoading} />
       </div>
 
-      {/* Results */}
+      {/* Live Loading State */}
       {loading && (
-        <div style={{
-          textAlign: "center",
-          padding: "3rem",
-          color: "var(--text-secondary)",
-          animation: "fadeIn 0.3s ease",
-        }}>
-          <div style={{ fontSize: "2rem", marginBottom: "0.75rem", animation: "pulse 1.5s ease-in-out infinite" }}>⏳</div>
-          <div style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "0.25rem" }}>Analyzing product...</div>
-          <div style={{ fontSize: "0.88rem" }}>Comparing across platforms and calculating best deal</div>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "4rem 2rem",
+            color: "var(--text-secondary)",
+            animation: "fadeIn 0.3s ease",
+            background: "var(--bg-secondary)",
+            borderRadius: "16px",
+            border: "1px solid var(--border-color)",
+            marginBottom: "3rem",
+          }}
+        >
+          <div
+            className="spinner"
+            style={{ width: 36, height: 36, margin: "0 auto 1.25rem", borderWidth: 3 }}
+          />
+          <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.35rem" }}>
+            Running Cross-Platform Intelligence
+          </div>
+          <div style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
+            Scraping live prices, parsing seller metadata, and calculating Best Deal Score...
+          </div>
         </div>
       )}
 
+      {/* Immediate Inline Analysis Result (if available) */}
       {!loading && result && (
-        <AnalysisResult data={result} />
+        <div style={{ marginBottom: "3.5rem" }}>
+          <AnalysisResult data={result} analysisId={result?.id} />
+        </div>
       )}
 
-      {/* Empty State */}
+      {/* Default State: How It Works & Recent Analyses */}
       {!loading && !result && (
         <>
-          {/* How It Works */}
-          <div style={{ marginBottom: "3rem" }}>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, textAlign: "center", marginBottom: "1.5rem" }}>
-              How It Works
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem" }}>
+          {/* How It Works Section */}
+          <section className="section-container">
+            <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+              <div style={{ fontSize: "0.8rem", color: "var(--accent-cyan)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.35rem" }}>
+                Decision Pipeline
+              </div>
+              <h2 style={{ fontSize: "1.6rem", fontWeight: 800 }}>How ShopSmart Works</h2>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: "1.5rem",
+              }}
+            >
               {[
-                { step: "1", title: "Paste URL", desc: "Copy a product link from Amazon, Flipkart, or any supported platform", icon: "🔗", color: "#06b6d4" },
-                { step: "2", title: "AI Analysis", desc: "ShopSmart identifies the product, finds matches, and compares prices", icon: "🤖", color: "#3b82f6" },
-                { step: "3", title: "Best Deal", desc: "Get an explainable score, AI recommendation, and buy at the best price", icon: "🏆", color: "#10b981" },
+                {
+                  step: "01",
+                  title: "Paste Any Product Link",
+                  desc: "Copy a link from Amazon, Flipkart, Croma, Myntra, or AJIO. Our scraper automatically recognizes the marketplace and item identity.",
+                  icon: "🔗",
+                  badge: "Input Stage",
+                  color: "var(--accent-cyan)",
+                },
+                {
+                  step: "02",
+                  title: "Live Cross-Store Matching",
+                  desc: "ShopSmart scans alternate stores in parallel, extracting real-time pricing, stock status, delivery speed, and coupon codes.",
+                  icon: "⚡",
+                  badge: "Extraction Stage",
+                  color: "var(--accent-blue)",
+                },
+                {
+                  step: "03",
+                  title: "AI Best Deal Recommendation",
+                  desc: "Our weighted model computes an explainable 0–100 score across 8 dimensions to advise whether to buy now or wait.",
+                  icon: "🏆",
+                  badge: "Decision Stage",
+                  color: "var(--accent-green)",
+                },
               ].map((item, i) => (
-                <div key={item.step} style={{
-                  background: "var(--bg-secondary)",
-                  border: "1px solid var(--border-color)",
-                  borderRadius: "14px",
-                  padding: "1.5rem",
-                  textAlign: "center",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  cursor: "default",
-                  position: "relative",
-                  overflow: "hidden",
-                  animation: `slideUp 0.4s ${0.4 + i * 0.1}s ease both`,
-                }} onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.borderColor = item.color;
-                  e.currentTarget.style.boxShadow = `0 12px 24px -8px ${item.color}30`;
-                }} onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.borderColor = "var(--border-color)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}>
-                  <div style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 14,
-                    background: `${item.color}15`,
+                <div
+                  key={item.step}
+                  className="card-panel card-glow"
+                  style={{
+                    padding: "1.75rem",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "1.5rem",
-                    margin: "0 auto 0.75rem",
-                    border: `1px solid ${item.color}30`,
-                  }}>
-                    {item.icon}
+                    flexDirection: "column",
+                    position: "relative",
+                    animation: `slideUp 0.4s ${0.35 + i * 0.1}s ease both`,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: "12px",
+                        background: `${item.color}15`,
+                        border: `1px solid ${item.color}35`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.4rem",
+                      }}
+                    >
+                      {item.icon}
+                    </div>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "1rem",
+                        fontWeight: 800,
+                        color: item.color,
+                        opacity: 0.8,
+                      }}
+                    >
+                      {item.step}
+                    </span>
                   </div>
-                  <div style={{
-                    fontSize: "0.7rem",
-                    color: item.color,
-                    fontWeight: 700,
-                    marginBottom: "0.35rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}>Step {item.step}</div>
-                  <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "0.35rem" }}>{item.title}</div>
-                  <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>{item.desc}</div>
+
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: item.color,
+                      marginBottom: "0.35rem",
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.6rem" }}>
+                    {item.title}
+                  </h3>
+
+                  <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.55 }}>
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* Recent Analyses (logged-in users) or Quick Start */}
+          {/* Recent Analyses (Logged-In Users) */}
           {user && recentItems.length > 0 && (
-            <div style={{ marginBottom: "3rem" }}>
+            <section className="section-container">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Recent Analyses</h2>
-                <Link to="/recent" style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--accent-cyan)", textDecoration: "none" }}>
-                  View All →
+                <div>
+                  <h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Recent Decision Reports</h2>
+                  <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+                    Your recently analyzed products and price comparisons
+                  </p>
+                </div>
+                <Link
+                  to="/recent"
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+                >
+                  <span>View All History</span>
+                  <ArrowRight size={14} />
                 </Link>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                  gap: "1.25rem",
+                }}
+              >
                 {recentItems.map((item) => {
-                  const price = item.analysis_result?.comparisons?.best_price || item.analysis_result?.product?.price;
+                  const price =
+                    item.analysis_result?.comparisons?.best_price ||
+                    item.analysis_result?.product?.price;
+                  const platform = item.detected_platform || item.analysis_result?.platform;
+
                   return (
-                    <Link key={item.id} to={`/analysis/${item.id}`} style={{ textDecoration: "none" }}>
-                      <div style={{
-                        background: "var(--bg-secondary)",
-                        border: "1px solid var(--border-color)",
-                        borderRadius: "14px",
-                        padding: "1rem",
-                        display: "flex",
-                        gap: "0.75rem",
-                        alignItems: "center",
-                        transition: "all 0.2s ease",
-                        cursor: "pointer",
-                      }} onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                        e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.4)";
-                      }} onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.borderColor = "var(--border-color)";
-                      }}>
-                        <div style={{
-                          width: 52, height: 52, borderRadius: 10, overflow: "hidden", flexShrink: 0,
-                          background: "linear-gradient(135deg, rgba(6,182,212,0.05) 0%, rgba(59,130,246,0.05) 100%)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <img src={getProductImage(item.product_image || item.analysis_result?.product?.image_url)} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} onError={handleImageError} />
+                    <Link
+                      key={item.id}
+                      to={`/analysis/${item.id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <div
+                        className="card-panel card-glow"
+                        style={{
+                          padding: "1.25rem",
+                          display: "flex",
+                          gap: "1rem",
+                          alignItems: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 68,
+                            height: 68,
+                            borderRadius: "10px",
+                            overflow: "hidden",
+                            flexShrink: 0,
+                            background: "var(--bg-card)",
+                            border: "1px solid var(--border-color)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "0.4rem",
+                          }}
+                        >
+                          <img
+                            src={getProductImage(
+                              item.product_image || item.analysis_result?.product?.image_url
+                            )}
+                            alt=""
+                            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                            onError={handleImageError}
+                          />
                         </div>
+
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {item.product_title || "Product"}
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontSize: "0.92rem",
+                              color: "var(--text-primary)",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              marginBottom: "0.35rem",
+                            }}
+                          >
+                            {item.product_title || "Analyzed Product"}
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.2rem" }}>
-                            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 600 }}>{item.detected_platform}</span>
-                            {price && <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--accent-green)" }}>₹{Number(price).toLocaleString("en-IN")}</span>}
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                            {platform && <PlatformBadge platform={platform} size="sm" />}
+                            {price && (
+                              <span
+                                style={{
+                                  fontSize: "0.95rem",
+                                  fontWeight: 800,
+                                  color: "var(--accent-green)",
+                                  fontFamily: "var(--font-mono)",
+                                }}
+                              >
+                                ₹{Number(price).toLocaleString("en-IN")}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -213,77 +404,68 @@ const Home = () => {
                   );
                 })}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* Quick Start (no recent items or not logged in) */}
+          {/* Quick-Start Discovery Section */}
           {(!user || recentItems.length === 0) && (
-            <div style={{ marginBottom: "3rem", textAlign: "center" }}>
-              <div style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border-color)",
-                borderRadius: "14px",
-                padding: "2rem",
-              }}>
-                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🚀</div>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.35rem" }}>Get Started</div>
-                <div style={{ fontSize: "0.88rem", color: "var(--text-secondary)", maxWidth: 400, margin: "0 auto" }}>
-                  {user
-                    ? "You haven't analyzed any products yet. Paste a URL above to get started!"
-                    : "Paste a product URL above to compare prices across 8 platforms. Sign in to save your analysis history."}
-                </div>
+            <section
+              className="card-glass"
+              style={{
+                padding: "2.5rem 2rem",
+                textAlign: "center",
+                borderRadius: "18px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: "14px",
+                  background: "rgba(6, 182, 212, 0.12)",
+                  border: "1px solid rgba(6, 182, 212, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--accent-cyan)",
+                }}
+              >
+                <Zap size={26} />
               </div>
-            </div>
-          )}
 
-          {/* Supported Platforms */}
-          <div style={{
-            textAlign: "center",
-            padding: "2rem",
-            background: "var(--bg-secondary)",
-            border: "1px solid var(--border-color)",
-            borderRadius: "14px",
-            animation: "fadeIn 0.5s 0.7s ease both",
-          }}>
-            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "0.75rem", fontWeight: 600 }}>
-              Supported Platforms
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", justifyContent: "center" }}>
-              {[
-                { name: "Amazon", icon: "🛒", color: "#f59e0b" },
-                { name: "Flipkart", icon: "🛍️", color: "#3b82f6" },
-                { name: "Myntra", icon: "👗", color: "#ec4899" },
-                { name: "AJIO", icon: "👟", color: "#8b5cf6" },
-                { name: "Meesho", icon: "🏷️", color: "#f43f5e" },
-                { name: "Croma", icon: "📺", color: "#06b6d4" },
-                { name: "Reliance Digital", icon: "🏪", color: "#10b981" },
-                { name: "Tata CLiQ", icon: "🏬", color: "#6366f1" },
-              ].map((p) => (
-                <span key={p.name} style={{
-                  padding: "0.4rem 0.85rem",
-                  background: `${p.color}10`,
-                  border: `1px solid ${p.color}30`,
-                  borderRadius: "8px",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: p.color,
-                  transition: "all 0.2s ease",
-                  cursor: "default",
-                }} onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${p.color}20`;
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                }} onMouseLeave={(e) => {
-                  e.currentTarget.style.background = `${p.color}10`;
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}>
-                  {p.icon} {p.name}
-                </span>
-              ))}
-            </div>
-          </div>
+              <div>
+                <h3 style={{ fontSize: "1.25rem", fontWeight: 800, marginBottom: "0.4rem" }}>
+                  Ready to test cross-store comparison?
+                </h3>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", maxWidth: 560, margin: "0 auto" }}>
+                  Paste any product link from Amazon, Flipkart, Croma, Myntra, or AJIO into the analyzer above to instantly discover matching listings, price differences, and our explainable Best Deal Score.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  className="btn btn-primary btn-md"
+                >
+                  <Sparkles size={16} /> Analyze a Product Now
+                </button>
+                {!user && (
+                  <Link to="/register" className="btn btn-secondary btn-md">
+                    Create Free Account
+                  </Link>
+                )}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>
+  </div>
   );
 };
 

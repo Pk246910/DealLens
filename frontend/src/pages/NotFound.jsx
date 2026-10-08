@@ -51,7 +51,7 @@ const NotFound = () => {
             fontSize: "0.9rem",
             textDecoration: "none",
           }}>Go Home</Link>
-          <Link to="/products" style={{
+          <Link to="/recent" style={{
             padding: "0.65rem 1.5rem",
             borderRadius: "10px",
             border: "1px solid var(--border-color)",
@@ -60,7 +60,7 @@ const NotFound = () => {
             fontWeight: 700,
             fontSize: "0.9rem",
             textDecoration: "none",
-          }}>Browse Products</Link>
+          }}>View Recent</Link>
         </div>
         <div style={{
           marginTop: "1.75rem",
@@ -71,7 +71,7 @@ const NotFound = () => {
         }}>
           {[
             { to: "/", label: "Analyze" },
-            { to: "/products", label: "Catalog" },
+            { to: "/recent", label: "Recent History" },
             { to: "/wishlist", label: "Wishlist" },
           ].map((link) => (
             <Link key={link.to} to={link.to} style={{

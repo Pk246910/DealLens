@@ -11,28 +11,36 @@ export const AuthProvider = ({ children }) => {
   const [guestId] = useState(() => {
     let gid = localStorage.getItem("shopsmart_guest_id");
     if (!gid) {
-      gid = "guest_" + Math.random().toString(36).substring(2, 9);
+      gid = "guest_" + crypto.randomUUID();
       localStorage.setItem("shopsmart_guest_id", gid);
     }
     return gid;
   });
 
-  const login = async (username, password) => {
+  const login = async (username, password, options = {}) => {
     const res = await API.post("/users/login/", { username, password });
     const { access, refresh } = res.data;
-    localStorage.setItem("shopsmart_access", access);
-    localStorage.setItem("shopsmart_refresh", refresh);
-    // fetch profile
+    // fetch profile before saving or committing session
+    let profile;
     try {
       const me = await API.get("/users/me/", { headers: { Authorization: `Bearer ${access}` } });
-      setUser(me.data);
-      localStorage.setItem("shopsmart_user", JSON.stringify(me.data));
+      profile = me.data;
     } catch {
-      const fallback = { username };
-      setUser(fallback);
-      localStorage.setItem("shopsmart_user", JSON.stringify(fallback));
+      profile = { username };
     }
-    return res.data;
+
+    if (options.disallowStaff && (profile.is_staff || profile.is_superuser)) {
+      const err = new Error("ADMIN_ACCOUNT_NOT_ALLOWED");
+      err.isStaff = true;
+      err.user = profile;
+      throw err;
+    }
+
+    localStorage.setItem("shopsmart_access", access);
+    localStorage.setItem("shopsmart_refresh", refresh);
+    localStorage.setItem("shopsmart_user", JSON.stringify(profile));
+    setUser(profile);
+    return { ...res.data, user: profile };
   };
 
   const register = async (username, email, password) => {
@@ -42,6 +50,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("shopsmart_refresh", res.data.tokens.refresh);
       setUser(res.data.user);
       localStorage.setItem("shopsmart_user", JSON.stringify(res.data.user));
+    } else {
+      throw new Error("Registration succeeded but no tokens returned. Please log in.");
     }
     return res.data;
   };
@@ -64,6 +74,18 @@ export const AuthProvider = ({ children }) => {
         })
         .catch(() => {});
     }
+  }, []);
+
+  // Listen for background logout events from axios interceptors
+  useEffect(() => {
+    const handleLogout = () => {
+      setUser(null);
+      localStorage.removeItem("shopsmart_access");
+      localStorage.removeItem("shopsmart_refresh");
+      localStorage.removeItem("shopsmart_user");
+    };
+    window.addEventListener("shopsmart:logout", handleLogout);
+    return () => window.removeEventListener("shopsmart:logout", handleLogout);
   }, []);
 
   return (

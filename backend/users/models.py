@@ -23,6 +23,7 @@ class PriceAlert(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        unique_together = (('user', 'product'),)
 
     def __str__(self):
         return f"Alert for {self.product.title} at ₹{self.target_price}"

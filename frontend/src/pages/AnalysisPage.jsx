@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
+import { Heart, Bell, ArrowLeft, RefreshCw, AlertCircle } from "lucide-react";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import AnalysisResult from "../components/AnalysisResult";
@@ -23,8 +24,6 @@ const AnalysisPage = () => {
   const [targetPrice, setTargetPrice] = useState("");
   const [alertSaving, setAlertSaving] = useState(false);
 
-
-
   const analysisData = analysis?.analysis_result || analysis;
   const product = analysisData?.product;
 
@@ -36,19 +35,25 @@ const AnalysisPage = () => {
     }
 
     setLoading(true);
-    API.get("/analyses/")
+    API.get(`/analyses/${id}/`)
       .then((res) => {
-        const list = res.data.results || res.data;
-        const found = Array.isArray(list)
-          ? list.find((a) => String(a.id) === String(id))
-          : null;
-        if (found) {
-          setAnalysis(found);
-        } else {
-          setError("Analysis not found");
-        }
+        setAnalysis(res.data);
       })
-      .catch(() => setError("Failed to load analysis"))
+      .catch(() => {
+        return API.get("/analyses/")
+          .then((res) => {
+            const list = res.data.results || res.data;
+            const found = Array.isArray(list)
+              ? list.find((a) => String(a.id) === String(id))
+              : null;
+            if (found) {
+              setAnalysis(found);
+            } else {
+              setError("Analysis report not found.");
+            }
+          })
+          .catch(() => setError("Failed to load analysis."));
+      })
       .finally(() => setLoading(false));
   }, [id, location.state]);
 
@@ -82,7 +87,7 @@ const AnalysisPage = () => {
   const toggleWishlist = async () => {
     if (!product?.id) return;
     if (!user) {
-      toast.error("Please login to save products");
+      toast.error("Please login to save products to your wishlist");
       return;
     }
     setWishlistLoading(true);
@@ -98,7 +103,7 @@ const AnalysisPage = () => {
         });
         setWishlisted(true);
         setWishlistId(res.data.id);
-        toast.success("Added to wishlist");
+        toast.success("Saved to wishlist");
       }
       window.dispatchEvent(new Event("wishlist:changed"));
     } catch {
@@ -123,6 +128,7 @@ const AnalysisPage = () => {
       });
       toast.success(`Alert set for ₹${Number(targetPrice).toLocaleString("en-IN")}`);
       setTargetPrice("");
+      window.dispatchEvent(new Event("alert:changed"));
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to set alert");
     } finally {
@@ -132,9 +138,14 @@ const AnalysisPage = () => {
 
   useEffect(() => {
     if (analysis) {
-      const title = analysis.analysis_result?.product?.title || analysis.product?.title || "Analysis";
+      const title =
+        analysis.analysis_result?.product?.title ||
+        analysis.product?.title ||
+        "Product Decision Analysis";
       document.title = `${title} — ShopSmart`;
-      return () => { document.title = "ShopSmart — AI-Powered Product Comparison"; };
+      return () => {
+        document.title = "ShopSmart — AI-Powered Product Comparison";
+      };
     }
   }, [analysis]);
 
@@ -146,7 +157,7 @@ const AnalysisPage = () => {
 
   if (loading) {
     return (
-      <div className="app-wrapper">
+      <div className="page-container" style={{ paddingTop: "2.5rem" }}>
         <SkeletonAnalysisPage />
       </div>
     );
@@ -154,145 +165,142 @@ const AnalysisPage = () => {
 
   if (error || !analysis) {
     return (
-      <div className="app-wrapper" style={{ maxWidth: 1100, margin: "0 auto", padding: "4rem 1.5rem", textAlign: "center" }}>
-        <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>🔍</div>
-        <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--accent-rose)", marginBottom: "0.5rem" }}>
-          {error || "Analysis not found"}
-        </div>
-        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1rem" }}>
-          <button onClick={() => window.location.reload()} style={{
-            padding: "0.6rem 1.2rem",
-            background: "var(--gradient-brand)",
-            color: "#fff",
-            borderRadius: "8px",
-            border: "none",
-            fontWeight: 700,
-            fontSize: "0.9rem",
-            cursor: "pointer",
-          }}>
-            Try Again
-          </button>
-          <Link to="/" style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "0.6rem 1.2rem",
-            background: "var(--bg-card)",
-            color: "var(--text-primary)",
-            border: "1px solid var(--border-color)",
-            borderRadius: "8px",
-            textDecoration: "none",
-            fontWeight: 700,
-            fontSize: "0.9rem",
-          }}>
-            ← Back to Home
-          </Link>
+      <div className="page-container" style={{ paddingTop: "4rem", textAlign: "center" }}>
+        <div className="card-panel" style={{ maxWidth: 500, margin: "0 auto", padding: "3rem 2rem" }}>
+          <AlertCircle size={40} color="var(--accent-rose)" style={{ margin: "0 auto 1rem" }} />
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+            {error || "Report Not Found"}
+          </h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+            The requested analysis report is unavailable or has expired.
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn btn-primary btn-sm"
+              style={{ display: "inline-flex", gap: "0.35rem" }}
+            >
+              <RefreshCw size={14} /> Refresh
+            </button>
+            <Link to="/" className="btn btn-secondary btn-sm">
+              ← Return Home
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="app-wrapper" style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem 3rem" }}>
-      {/* Top Bar */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "0.75rem",
-        marginBottom: "1.5rem",
-      }}>
+    <div className="page-container" style={{ paddingTop: "2rem" }}>
+      {/* Top Action Bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "1rem",
+          marginBottom: "1.75rem",
+          paddingBottom: "1rem",
+          borderBottom: "1px solid var(--border-color)",
+        }}
+      >
         <Link
           to="/"
-          style={{
-            color: "var(--accent-cyan)",
-            textDecoration: "none",
-            fontSize: "0.9rem",
-            fontWeight: 600,
-          }}
+          className="btn btn-secondary btn-sm"
+          style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
         >
-          ← Back to Home
+          <ArrowLeft size={15} /> Back to Analyzer
         </Link>
 
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+          {/* Wishlist Toggle Button */}
           <button
             onClick={toggleWishlist}
             disabled={wishlistLoading}
+            className="btn btn-secondary btn-sm"
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.5rem 1rem",
-              borderRadius: "8px",
-              border: wishlisted
-                ? "1px solid rgba(244, 63, 94, 0.4)"
-                : "1px solid var(--border-color)",
-              background: wishlisted
-                ? "rgba(244, 63, 94, 0.12)"
-                : "var(--bg-secondary)",
-              color: wishlisted
-                ? "var(--accent-rose)"
-                : "var(--text-primary)",
-              fontWeight: 600,
-              fontSize: "0.85rem",
-              cursor: wishlistLoading ? "not-allowed" : "pointer",
-              transition: "all 0.2s ease",
+              borderColor: wishlisted ? "rgba(244, 63, 94, 0.4)" : "var(--border-color)",
+              background: wishlisted ? "rgba(244, 63, 94, 0.12)" : "var(--bg-card)",
+              color: wishlisted ? "var(--accent-rose)" : "var(--text-primary)",
             }}
           >
-            {wishlisted ? "♥ Saved" : "♡ Save to Wishlist"}
+            <Heart
+              size={15}
+              fill={wishlisted ? "var(--accent-rose)" : "none"}
+              color={wishlisted ? "var(--accent-rose)" : "currentColor"}
+            />
+            <span>{wishlisted ? "Saved" : "Save to Wishlist"}</span>
           </button>
 
+          {/* Jump to Alert Button */}
           {user && (
             <button
-              onClick={() => document.getElementById("alert-section")?.scrollIntoView({ behavior: "smooth", block: "center" })}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.4rem",
-                padding: "0.5rem 1rem",
-                borderRadius: "8px",
-                border: "1px solid var(--border-color)",
-                background: "var(--bg-secondary)",
-                color: "var(--text-primary)",
-                fontWeight: 600,
-                fontSize: "0.85rem",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
+              onClick={() =>
+                document.getElementById("alert-section")?.scrollIntoView({ behavior: "smooth", block: "center" })
+              }
+              className="btn btn-secondary btn-sm"
             >
-              🔔 Set Alert
+              <Bell size={15} />
+              <span>Set Alert</span>
             </button>
           )}
 
+          {/* Share Button */}
           <ShareButton
-            title={analysis.product?.title || analysis.analysis_result?.title || "Product"}
+            title={
+              analysis.product?.title ||
+              analysis.analysis_result?.product?.title ||
+              analysis.analysis_result?.title ||
+              "Product Deal"
+            }
             price={analysis.analysis_result?.best_deal_price || analysis.product?.price}
             url={`${window.location.origin}/analysis/${id}`}
           />
         </div>
       </div>
 
-      {/* Analysis Result */}
+      {/* Main Analysis Result View */}
       <AnalysisResult data={analysis.analysis_result || analysis} analysisId={id} />
 
-      {/* Price Alert Section */}
+      {/* Price Alert Form Panel */}
       {user && (
         <div
           id="alert-section"
+          className="card-panel card-glow"
           style={{
-            marginTop: "1.5rem",
-            background: "var(--bg-secondary)",
-            border: "1px solid var(--border-color)",
-            borderRadius: "12px",
-            padding: "1.25rem",
+            marginTop: "2.5rem",
+            padding: "1.75rem",
           }}
         >
-          <h4 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            🔔 Set Price Alert
-          </h4>
-          <form onSubmit={handleSetAlert} style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "0 0.6rem" }}>
-              <span style={{ color: "var(--text-muted)", fontWeight: 600, fontSize: "0.85rem" }}>₹</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+            <Bell size={18} color="var(--accent-amber)" />
+            <h4 style={{ fontSize: "1.05rem", fontWeight: 800 }}>
+              Automated 30-Day Price Drop Monitor
+            </h4>
+          </div>
+
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginBottom: "1.25rem", maxWidth: 650 }}>
+            Set your target purchase price. Our background monitoring service tracks cross-store prices daily and notifies you when the product drops to or below your target.
+          </p>
+
+          <form
+            onSubmit={handleSetAlert}
+            style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "10px",
+                padding: "0 0.85rem",
+                width: 200,
+              }}
+            >
+              <span style={{ color: "var(--text-muted)", fontWeight: 700, fontSize: "0.95rem" }}>₹</span>
               <input
                 type="number"
                 placeholder="Target price"
@@ -305,67 +313,48 @@ const AnalysisPage = () => {
                   border: "none",
                   outline: "none",
                   color: "var(--text-primary)",
-                  fontSize: "0.9rem",
-                  padding: "0.55rem 0.4rem",
-                  width: 140,
+                  fontSize: "0.95rem",
+                  padding: "0.7rem 0.5rem",
+                  width: "100%",
+                  fontFamily: "var(--font-mono)",
                 }}
               />
             </div>
+
             <button
               type="submit"
               disabled={alertSaving || !targetPrice}
-              style={{
-                padding: "0.55rem 1.2rem",
-                borderRadius: "8px",
-                border: "none",
-                background: "var(--gradient-brand)",
-                color: "#fff",
-                fontWeight: 700,
-                fontSize: "0.85rem",
-                cursor: alertSaving ? "not-allowed" : "pointer",
-                opacity: alertSaving || !targetPrice ? 0.6 : 1,
-                transition: "opacity 0.2s ease",
-              }}
+              className="btn btn-primary"
+              style={{ padding: "0.7rem 1.4rem" }}
             >
-              {alertSaving ? "Setting..." : "Set Alert"}
+              {alertSaving ? "Saving Alert..." : "Activate Monitor"}
             </button>
           </form>
-          <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            You'll be notified when the price drops to or below your target.
-          </div>
         </div>
       )}
 
+      {/* Guest Alert Promo */}
       {!user && (
-        <div style={{
-          marginTop: "1.5rem",
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border-color)",
-          borderRadius: "12px",
-          padding: "1.25rem",
-          textAlign: "center",
-        }}>
-          <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.75rem" }}>
-            🔔 Want to set a price alert?
-          </div>
-          <Link
-            to="/login"
-            style={{
-              display: "inline-block",
-              padding: "0.5rem 1rem",
-              background: "var(--accent-cyan)",
-              color: "#fff",
-              borderRadius: "8px",
-              textDecoration: "none",
-              fontWeight: 700,
-              fontSize: "0.85rem",
-            }}
-          >
-            Login to Set Alert
+        <div
+          className="card-panel"
+          style={{
+            marginTop: "2.5rem",
+            padding: "1.75rem",
+            textAlign: "center",
+          }}
+        >
+          <Bell size={24} color="var(--accent-amber)" style={{ margin: "0 auto 0.5rem" }} />
+          <h4 style={{ fontSize: "1rem", fontWeight: 800, marginBottom: "0.35rem" }}>
+            Want automatic price drop alerts for this product?
+          </h4>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "1rem" }}>
+            Sign in to activate automated cross-store price monitoring.
+          </p>
+          <Link to="/login" className="btn btn-secondary btn-sm">
+            Sign In to Set Alert
           </Link>
         </div>
       )}
-
     </div>
   );
 };

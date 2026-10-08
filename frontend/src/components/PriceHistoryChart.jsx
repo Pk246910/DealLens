@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import API from "../api/axios";
-
-const colors = { Amazon: "#f59e0b", Flipkart: "#3b82f6", Croma: "#06b6d4", "Reliance Digital": "#10b981", Myntra: "#ec4899", AJIO: "#8b5cf6", Meesho: "#f43f5e", "Tata CLiQ": "#6366f1" };
+import { getPlatformColor } from "../utils/platforms";
 
 // Inline price-history chart (replaces the old popup modal).
 // Renders nothing when there is no product id or no history yet.
@@ -13,6 +12,11 @@ const PriceHistoryChart = ({ productId, productTitle, demoListings = [] }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hiddenStores, setHiddenStores] = useState([]);
+  const [mountedTime, setMountedTime] = useState(0);
+
+  useEffect(() => {
+    setMountedTime(Date.now());
+  }, []);
 
   useEffect(() => {
     if (!productId) return;
@@ -52,8 +56,10 @@ const PriceHistoryChart = ({ productId, productTitle, demoListings = [] }) => {
     (l) => Array.isArray(l.trend) && l.trend.length === 31 && !allStores.includes(l.platform)
   );
   const demoKeys = demos.map((l) => `${l.platform} (Demo)`);
-  const dateLabel = (daysAgo) =>
-    new Date(Date.now() - daysAgo * 86400000).toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+  const dateLabel = (daysAgo) => {
+    const base = mountedTime || 1704067200000;
+    return new Date(base - daysAgo * 86400000).toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+  };
   const merged = [];
   if (chartData.length > 0 || demos.length > 0) {
     for (let ago = 30; ago >= 0; ago--) {
@@ -65,7 +71,7 @@ const PriceHistoryChart = ({ productId, productTitle, demoListings = [] }) => {
       merged.push(row);
     }
   }
-  const storeColor = (s) => colors[s.replace(" (Demo)", "")] || "#06b6d4";
+  const storeColor = (s) => getPlatformColor(s.replace(" (Demo)", "")) || "#06b6d4";
   const pillStores = [...allStores, ...demoKeys];
   const visibleDemoKeys = demoKeys.filter((s) => !hiddenStores.includes(s));
   // Demo trends belong to cheaper reference products — they would render

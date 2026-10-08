@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Professional setup: base URL comes from env, with local fallback.
 //   - local dev:  create frontend/.env.development with VITE_API_URL=http://127.0.0.1:8000/api
-//   - prod build: set VITE_API_URL at build time (Render/Vercel/Netlify env var)
+//   - prod build: set VITE_API_URL at build time (Vercel Project Settings env var)
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
@@ -58,6 +58,8 @@ API.interceptors.response.use(
         } catch (_e) {
           localStorage.removeItem("shopsmart_access");
           localStorage.removeItem("shopsmart_refresh");
+          localStorage.removeItem("shopsmart_user");
+          window.dispatchEvent(new Event("shopsmart:logout"));
         }
       }
     }

@@ -1,4 +1,4 @@
-Django==6.0.7
+Django==5.0.7
 PyJWT==2.13.0
 asgiref==3.12.1
 beautifulsoup4==4.15.0
@@ -10,14 +10,15 @@ djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
 gunicorn==23.0.0
 idna==3.19
-psycopg2-binary==2.9.12
+psycopg2-binary==2.9.13
 python-dotenv==1.2.2
 requests==2.34.2
-# Official affiliate APIs (LEVEL 1 extraction; lazy imports, optional at runtime)
-playwright==1.63.0
 soupsieve==2.9.2
 sqlparse==0.5.5
 typing_extensions==4.16.0
 tzdata==2026.3
 urllib3==2.7.0
 whitenoise==6.9.0
+
+# Optional / browser-only (not required for core API; install separately for scraping tasks)
+playwright==1.63.0

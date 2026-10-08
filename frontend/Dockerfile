@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-# Set at build time: docker build --build-arg VITE_API_URL=https://your-api.onrender.com/api .
+# Set at build time: docker build --build-arg VITE_API_URL=https://your-api-domain.com/api .
 ARG VITE_API_URL=http://127.0.0.1:8000/api
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build

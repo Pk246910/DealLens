@@ -3,24 +3,21 @@ import { Link, useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { getProductImage, handleImageError } from "../utils/images";
+import PlatformBadge from "../components/PlatformBadge";
 import toast from "react-hot-toast";
+import {
+  Clock,
+  History,
+  Trash2,
+  BarChart3,
+  ArrowRight,
+} from "lucide-react";
 
 const TABS = [
   { key: "all", label: "All Recent" },
   { key: "analyzed", label: "Recently Analyzed" },
   { key: "viewed", label: "Recently Viewed" },
 ];
-
-const PLATFORM_COLORS = {
-  Amazon: "#f59e0b",
-  Flipkart: "#3b82f6",
-  Myntra: "#ec4899",
-  AJIO: "#8b5cf6",
-  Meesho: "#f43f5e",
-  Croma: "#06b6d4",
-  "Reliance Digital": "#10b981",
-  "Tata CLiQ": "#6366f1",
-};
 
 const timeAgo = (dateStr) => {
   if (!dateStr) return "";
@@ -39,7 +36,7 @@ const timeAgo = (dateStr) => {
 };
 
 const Recent = () => {
-  const { user, guestId } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("all");
   const [items, setItems] = useState([]);
@@ -114,265 +111,467 @@ const Recent = () => {
   };
 
   return (
-    <div className="app-wrapper" style={{ padding: "0 1.5rem 4rem", maxWidth: 1100, margin: "0 auto" }}>
+    <div
+      className="page-container"
+      style={{
+        width: "100%",
+        maxWidth: 1200,
+        margin: "0 auto",
+        padding: "2.5rem 1.5rem 4rem",
+      }}
+    >
       {/* Header */}
-      <div style={{ padding: "2rem 0 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "1.25rem",
+          marginBottom: "1.75rem",
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>
-            Recent
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-            {!user ? "Your recent product analyses" : `Your recent analyses — ${items.length} items`}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "10px",
+                background: "rgba(6, 182, 212, 0.12)",
+                border: "1px solid rgba(6, 182, 212, 0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--accent-cyan)",
+              }}
+            >
+              <History size={20} />
+            </div>
+            <h1 style={{ fontSize: "1.85rem", fontWeight: 800, margin: 0, letterSpacing: "-0.02em" }}>
+              Recent History
+            </h1>
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.92rem", margin: 0 }}>
+            {!user
+              ? "Your recent product analyses and price lookups"
+              : `Your recent product comparisons — ${items.length} ${items.length === 1 ? "item" : "items"}`}
           </p>
         </div>
+
         {items.length > 0 && (
           <button
+            type="button"
             onClick={handleClear}
             disabled={clearing}
+            className="btn btn-secondary btn-sm"
             style={{
               padding: "0.5rem 1rem",
-              borderRadius: "8px",
+              borderRadius: "10px",
               border: "1px solid rgba(244, 63, 94, 0.3)",
               background: "rgba(244, 63, 94, 0.08)",
               color: "var(--accent-rose)",
               fontWeight: 600,
-              fontSize: "0.82rem",
+              fontSize: "0.84rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.45rem",
               cursor: clearing ? "not-allowed" : "pointer",
-              transition: "all 0.2s ease",
             }}
           >
-            {clearing ? "Clearing..." : "Clear History"}
+            <Trash2 size={15} />
+            <span>{clearing ? "Clearing..." : "Clear History"}</span>
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: "0.5rem 1.1rem",
-              borderRadius: "999px",
-              border: "1px solid",
-              borderColor: activeTab === tab.key ? "var(--accent-cyan)" : "var(--border-color)",
-              background: activeTab === tab.key ? "var(--accent-cyan)" : "var(--bg-card)",
-              color: activeTab === tab.key ? "#fff" : "var(--text-secondary)",
-              fontSize: "0.82rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div
+        style={{
+          display: "flex",
+          gap: "0.6rem",
+          marginBottom: "2rem",
+          flexWrap: "wrap",
+          alignItems: "center",
+          borderBottom: "1px solid var(--border-color)",
+          paddingBottom: "1rem",
+        }}
+      >
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: "0.55rem 1.25rem",
+                borderRadius: "999px",
+                border: "1px solid",
+                borderColor: isActive ? "var(--accent-cyan)" : "var(--border-color)",
+                background: isActive ? "var(--accent-cyan)" : "var(--bg-secondary)",
+                color: isActive ? "#ffffff" : "var(--text-secondary)",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: isActive ? "0 2px 10px rgba(6, 182, 212, 0.3)" : "none",
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Loading */}
+      {/* Loading Skeleton */}
       {loading && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} style={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border-color)",
-              borderRadius: "14px",
-              padding: "1.25rem",
-              animation: "pulse 1.5s ease-in-out infinite",
-              minHeight: 160,
-            }} />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+            gap: "1.25rem",
+            width: "100%",
+          }}
+        >
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="card-panel"
+              style={{
+                height: 180,
+                animation: "pulse 1.5s ease-in-out infinite",
+                borderRadius: "14px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+              }}
+            />
           ))}
         </div>
       )}
 
       {/* Empty State */}
       {!loading && items.length === 0 && (
-        <div style={{
-          textAlign: "center",
-          padding: "4rem 2rem",
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border-color)",
-          borderRadius: "14px",
-        }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🔍</div>
-          <div style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.35rem" }}>No recent analyses yet</div>
-          <div style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginBottom: "1.5rem", maxWidth: 400, margin: "0 auto 1.5rem" }}>
-            Paste a product URL to start comparing products across platforms.
+        <div
+          className="card-panel"
+          style={{
+            textAlign: "center",
+            padding: "4.5rem 2rem",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-color)",
+            borderRadius: "16px",
+            width: "100%",
+          }}
+        >
+          <div style={{ fontSize: "2.8rem", marginBottom: "0.75rem" }}>🔍</div>
+          <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.4rem" }}>
+            No recent analyses yet
           </div>
-          <Link to="/" style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.4rem",
-            padding: "0.6rem 1.5rem",
-            background: "var(--gradient-brand)",
-            color: "#fff",
-            borderRadius: "10px",
-            textDecoration: "none",
-            fontWeight: 700,
-            fontSize: "0.9rem",
-          }}>
-            Analyze a Product
+          <p
+            style={{
+              fontSize: "0.9rem",
+              color: "var(--text-secondary)",
+              maxWidth: 440,
+              margin: "0 auto 1.75rem",
+              lineHeight: 1.5,
+            }}
+          >
+            Paste any product link from Amazon, Flipkart, or other stores into ShopSmart to start tracking prices and AI deal insights.
+          </p>
+          <Link
+            to="/"
+            className="btn btn-primary"
+            style={{
+              padding: "0.7rem 1.6rem",
+              borderRadius: "10px",
+              fontWeight: 700,
+              fontSize: "0.92rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <span>Analyze a Product</span>
+            <ArrowRight size={16} />
           </Link>
         </div>
       )}
 
       {/* Items Grid */}
       {!loading && items.length > 0 && (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
-          gap: "1rem",
-        }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+            gap: "1.25rem",
+            width: "100%",
+          }}
+        >
           {items.map((item) => {
             const price = getLowestPrice(item);
+            const originalPrice =
+              item.analysis_result?.product?.mrp ||
+              item.analysis_result?.comparisons?.highest_price;
             const offerCount = getOfferCount(item);
             const dealScore = getDealScore(item);
-            const platformColor = PLATFORM_COLORS[item.detected_platform] || "var(--accent-cyan)";
+            const platform = item.detected_platform || item.analysis_result?.platform;
+            const title =
+              item.product_title ||
+              item.analysis_result?.product?.title ||
+              "Analyzed Product";
+            const brand =
+              item.product_brand ||
+              item.analysis_result?.product?.brand;
+            const imageUrl = getProductImage(
+              item.product_image || item.analysis_result?.product?.image_url
+            );
 
             return (
               <div
                 key={item.id}
+                className="card-panel card-glow"
                 onClick={() => handleView(item)}
                 style={{
-                  background: "var(--bg-card)",
-                  border: "1px solid var(--border-color)",
-                  borderRadius: "14px",
                   padding: "1.25rem",
                   cursor: "pointer",
-                  transition: "all 0.25s ease",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "0.75rem",
+                  justifyContent: "space-between",
+                  gap: "1rem",
+                  borderRadius: "14px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-color)",
                   position: "relative",
-                  overflow: "hidden",
+                  transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.borderColor = platformColor;
-                  e.currentTarget.style.boxShadow = `0 8px 20px -6px ${platformColor}25`;
+                  e.currentTarget.style.borderColor = "var(--accent-cyan)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px -4px rgba(6, 182, 212, 0.18)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.borderColor = "var(--border-color)";
-                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.boxShadow = "var(--shadow-card)";
                 }}
               >
-                {/* Top row: image + info */}
+                {/* Viewed badge */}
+                {item.viewed_at && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      padding: "0.15rem 0.5rem",
+                      borderRadius: "6px",
+                      background: "rgba(99, 102, 241, 0.12)",
+                      color: "#6366f1",
+                      border: "1px solid rgba(99, 102, 241, 0.25)",
+                    }}
+                  >
+                    Viewed
+                  </div>
+                )}
+
+                {/* Top Section: Image + Title + Meta */}
                 <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-                  <div style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    flexShrink: 0,
-                    background: "linear-gradient(135deg, rgba(6,182,212,0.05) 0%, rgba(59,130,246,0.05) 100%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}>
+                  <div
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--border-color)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0.4rem",
+                    }}
+                  >
                     <img
-                      src={getProductImage(item.product_image || item.analysis_result?.product?.image_url)}
-                      alt={item.product_title || "Product"}
+                      src={imageUrl}
+                      alt={title}
                       style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                       onError={handleImageError}
                     />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontWeight: 700,
-                      fontSize: "0.92rem",
-                      lineHeight: 1.3,
-                      marginBottom: "0.3rem",
-                      color: "var(--text-primary)",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}>
-                      {item.product_title || "Product"}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                      <span style={{
-                        fontSize: "0.7rem",
+
+                  <div style={{ flex: 1, minWidth: 0, paddingRight: item.viewed_at ? "3.2rem" : 0 }}>
+                    <div
+                      style={{
                         fontWeight: 700,
-                        padding: "0.15rem 0.5rem",
-                        borderRadius: "6px",
-                        background: `${platformColor}15`,
-                        color: platformColor,
-                        border: `1px solid ${platformColor}30`,
-                      }}>
-                        {item.detected_platform}
-                      </span>
-                      {item.product_brand && (
-                        <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 600 }}>
-                          {item.product_brand}
+                        fontSize: "0.94rem",
+                        lineHeight: 1.35,
+                        marginBottom: "0.4rem",
+                        color: "var(--text-primary)",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                      title={title}
+                    >
+                      {title}
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                      {platform && <PlatformBadge platform={platform} size="sm" />}
+                      {brand && (
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            color: "var(--text-muted)",
+                            fontWeight: 600,
+                            background: "rgba(255, 255, 255, 0.04)",
+                            padding: "0.15rem 0.45rem",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {brand}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Price + Score */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-                  {price ? (
-                    <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--accent-green)" }}>
-                      ₹{Number(price).toLocaleString("en-IN")}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>Price unavailable</span>
-                  )}
+                {/* Middle: Price + MRP + Deal Score */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.75rem",
+                    padding: "0.6rem 0.75rem",
+                    borderRadius: "10px",
+                    background: "rgba(255, 255, 255, 0.02)",
+                    border: "1px solid var(--border-color)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {price ? (
+                      <span
+                        style={{
+                          fontSize: "1.2rem",
+                          fontWeight: 800,
+                          color: "var(--accent-green)",
+                          fontFamily: "var(--font-mono)",
+                        }}
+                      >
+                        ₹{Number(price).toLocaleString("en-IN")}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                        Price unavailable
+                      </span>
+                    )}
+
+                    {originalPrice && Number(originalPrice) > Number(price) && (
+                      <span
+                        style={{
+                          fontSize: "0.8rem",
+                          color: "var(--text-muted)",
+                          textDecoration: "line-through",
+                          fontFamily: "var(--font-mono)",
+                        }}
+                      >
+                        ₹{Number(originalPrice).toLocaleString("en-IN")}
+                      </span>
+                    )}
+                  </div>
+
                   {dealScore !== null && (
-                    <span style={{
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      padding: "0.2rem 0.55rem",
-                      borderRadius: "6px",
-                      background: dealScore >= 75 ? "rgba(16, 185, 129, 0.12)" : dealScore >= 50 ? "rgba(245, 158, 11, 0.12)" : "rgba(244, 63, 94, 0.12)",
-                      color: dealScore >= 75 ? "#10b981" : dealScore >= 50 ? "#f59e0b" : "#f43f5e",
-                    }}>
+                    <span
+                      style={{
+                        fontSize: "0.76rem",
+                        fontWeight: 700,
+                        padding: "0.25rem 0.6rem",
+                        borderRadius: "6px",
+                        background:
+                          dealScore >= 75
+                            ? "rgba(16, 185, 129, 0.12)"
+                            : dealScore >= 50
+                            ? "rgba(245, 158, 11, 0.12)"
+                            : "rgba(244, 63, 94, 0.12)",
+                        color:
+                          dealScore >= 75
+                            ? "#10b981"
+                            : dealScore >= 50
+                            ? "#f59e0b"
+                            : "#f43f5e",
+                        border: `1px solid ${
+                          dealScore >= 75
+                            ? "rgba(16, 185, 129, 0.25)"
+                            : dealScore >= 50
+                            ? "rgba(245, 158, 11, 0.25)"
+                            : "rgba(244, 63, 94, 0.25)"
+                        }`,
+                      }}
+                    >
                       Score: {dealScore}
                     </span>
                   )}
                 </div>
 
-                {/* Footer */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {/* Footer: Metadata + Quick Actions */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingTop: "0.4rem",
+                    borderTop: "1px solid var(--border-color)",
+                    fontSize: "0.76rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", color: "var(--text-muted)" }}>
                     {offerCount > 0 && (
-                      <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600 }}>
-                        {offerCount} listing{offerCount > 1 ? "s" : ""}
+                      <span style={{ fontWeight: 600 }}>
+                        {offerCount} {offerCount > 1 ? "listings" : "listing"}
                       </span>
                     )}
-                    <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      <Clock size={12} />
                       {timeAgo(item.created_at)}
                     </span>
                   </div>
-                  <span style={{
-                    fontSize: "0.72rem",
-                    fontWeight: 600,
-                    color: "var(--accent-cyan)",
-                  }}>
-                    View Analysis →
-                  </span>
-                </div>
 
-                {/* Viewed badge */}
-                {item.viewed_at && (
-                  <div style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    fontSize: "0.65rem",
-                    fontWeight: 600,
-                    padding: "0.15rem 0.4rem",
-                    borderRadius: "4px",
-                    background: "rgba(99, 102, 241, 0.1)",
-                    color: "#6366f1",
-                  }}>
-                    Viewed
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <Link
+                      to={`/report/${item.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        padding: "0.3rem 0.55rem",
+                        fontSize: "0.72rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                      }}
+                      title="View Multi-Store Decision Report"
+                    >
+                      <BarChart3 size={12} />
+                      <span>Report</span>
+                    </Link>
+
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                        fontWeight: 700,
+                        color: "var(--accent-cyan)",
+                        fontSize: "0.78rem",
+                      }}
+                    >
+                      <span>Analysis</span>
+                      <ArrowRight size={13} />
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}

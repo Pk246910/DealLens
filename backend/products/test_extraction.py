@@ -731,6 +731,21 @@ class CouponValidityTests(TestCase):
         offer.save()
         self.assertFalse(offer.coupon_is_valid())
 
+    def test_active_unexpired_coupon_valid(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from products.models import Coupon, Platform
+        platform, _ = Platform.objects.get_or_create(name="Amazon")
+        Coupon.objects.create(
+            code="LIVE100", platform=platform, discount_amount=Decimal("100"),
+            valid_from=timezone.now() - timedelta(days=1),
+            valid_until=timezone.now() + timedelta(days=30),
+            is_active=True)
+        offer = self._offer_with_code("LIVE100")
+        offer.platform = platform
+        offer.save()
+        self.assertTrue(offer.coupon_is_valid())
+
     def test_serializer_exposes_coupon_valid(self):
         res = self.client.get(f"/api/products/{self._offer_with_code('NORECORD').product_id}/")
         self.assertEqual(res.status_code, 200)

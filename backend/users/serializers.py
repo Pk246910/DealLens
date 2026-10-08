@@ -41,12 +41,13 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=False)
+
     class Meta:
         model = User
         fields = ['username', 'email', 'first_name', 'last_name']
         extra_kwargs = {
             'username': {'required': False},
-            'email': {'required': False},
         }
 
     def validate_username(self, value):
@@ -75,7 +76,7 @@ class PriceAlertSerializer(serializers.ModelSerializer):
         try:
             lowest = obj.product.offers.filter(in_stock=True).order_by('current_price').first()
             return float(lowest.current_price) if lowest else None
-        except:
+        except Exception:
             return None
 
     def get_is_triggered(self, obj):

@@ -332,7 +332,7 @@ class ComparisonEngine:
                 best_per_platform[platform] = listing
 
         result = list(best_per_platform.values())
-        result.sort(key=lambda x: (x.get("is_source", False), x.get("price", 0) or float("inf")))
+        result.sort(key=lambda x: (not x.get("is_source", False), x.get("price", 0) or float("inf")))
         return result[:8]
 
     def _build_source_listing(

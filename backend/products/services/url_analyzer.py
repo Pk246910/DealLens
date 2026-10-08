@@ -13,7 +13,6 @@ PLATFORM_DOMAINS = {
     "reliancedigital.in": "Reliance Digital",
     "relianceelectronics.com": "Reliance Digital",
     "tatacliq.com": "Tata CLiQ",
-    "tatcliq.com": "Tata CLiQ",
 }
 
 SUPPORTED_PLATFORMS = [
@@ -23,7 +22,7 @@ SUPPORTED_PLATFORMS = [
     {"name": "AJIO", "domains": ["ajio.com"], "icon": "👟"},
     {"name": "Meesho", "domains": ["meesho.com"], "icon": "🏷️"},
     {"name": "Croma", "domains": ["croma.com"], "icon": "📺"},
-    {"name": "Reliance Digital", "domains": ["reliancedigital.in"], "icon": "🏪"},
+    {"name": "Reliance Digital", "domains": ["reliancedigital.in", "relianceelectronics.com"], "icon": "🏪"},
     {"name": "Tata CLiQ", "domains": ["tatacliq.com"], "icon": "🏬"},
 ]
 
