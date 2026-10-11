@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import "./App.css";
@@ -8,19 +8,20 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
-import ProductDetail from "./pages/ProductDetail";
-import Recent from "./pages/Recent";
-import Wishlist from "./pages/Wishlist";
-import Alerts from "./pages/Alerts";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Profile from "./pages/Profile";
-import Admin from "./pages/Admin";
-import AdminLogin from "./pages/AdminLogin";
-import ForgotPassword from "./pages/ForgotPassword";
-import AnalysisPage from "./pages/AnalysisPage";
-import DecisionReport from "./pages/DecisionReport";
-import NotFound from "./pages/NotFound";
+
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Recent = lazy(() => import("./pages/Recent"));
+const Wishlist = lazy(() => import("./pages/Wishlist"));
+const Alerts = lazy(() => import("./pages/Alerts"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Admin = lazy(() => import("./pages/Admin"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const AnalysisPage = lazy(() => import("./pages/AnalysisPage"));
+const DecisionReport = lazy(() => import("./pages/DecisionReport"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -64,23 +65,42 @@ function App() {
             <Navbar />
             <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <ErrorBoundary>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/recent" element={<Recent />} />
-                  <Route path="/products" element={<Navigate to="/" replace />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
-                  <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin" element={<AdminProtectedRoute><Admin /></AdminProtectedRoute>} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/analysis/:id" element={<AnalysisPage />} />
-                  <Route path="/report/:id" element={<DecisionReport />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                <Suspense
+                  fallback={
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "4rem 1rem",
+                        color: "var(--text-secondary)",
+                        fontSize: "0.95rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Loading...
+                    </div>
+                  }
+                >
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/recent" element={<Recent />} />
+                    <Route path="/products" element={<Navigate to="/" replace />} />
+                    <Route path="/product/:id" element={<ProductDetail />} />
+                    <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+                    <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
+                    <Route path="/admin" element={<AdminProtectedRoute><Admin /></AdminProtectedRoute>} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/analysis/:id" element={<AnalysisPage />} />
+                    <Route path="/report/:id" element={<DecisionReport />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
               </ErrorBoundary>
             </main>
             <Footer />

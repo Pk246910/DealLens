@@ -322,8 +322,12 @@ const Recent = () => {
             const brand =
               item.product_brand ||
               item.analysis_result?.product?.brand;
+            const category =
+              item.product_category ||
+              item.analysis_result?.product?.category;
             const imageUrl = getProductImage(
-              item.product_image || item.analysis_result?.product?.image_url
+              item.product_image || item.analysis_result?.product?.image_url,
+              { title, brand, category }
             );
 
             return (
@@ -395,6 +399,9 @@ const Recent = () => {
                     <img
                       src={imageUrl}
                       alt={title}
+                      data-brand={brand || ""}
+                      data-category={category || ""}
+                      referrerPolicy="no-referrer"
                       style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                       onError={handleImageError}
                     />

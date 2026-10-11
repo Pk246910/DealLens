@@ -360,9 +360,17 @@ const Home = () => {
                         >
                           <img
                             src={getProductImage(
-                              item.product_image || item.analysis_result?.product?.image_url
+                              item.product_image || item.analysis_result?.product?.image_url,
+                              {
+                                title: item.product_title || item.analysis_result?.product?.title,
+                                brand: item.product_brand || item.analysis_result?.product?.brand,
+                                category: item.product_category || item.analysis_result?.product?.category,
+                              }
                             )}
-                            alt=""
+                            alt={item.product_title || item.analysis_result?.product?.title || "Analyzed Product"}
+                            data-brand={item.product_brand || item.analysis_result?.product?.brand || ""}
+                            data-category={item.product_category || item.analysis_result?.product?.category || ""}
+                            referrerPolicy="no-referrer"
                             style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                             onError={handleImageError}
                           />

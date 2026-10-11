@@ -151,7 +151,7 @@ class WishlistApiTests(TestCase):
         client.force_authenticate(user=self.user)
         client.post("/api/wishlist/", {"product": self.product.pk}, format="json")
         res = client.post("/api/wishlist/", {"product": self.product.pk}, format="json")
-        self.assertIn(res.status_code, (200, 201))
+        self.assertIn(res.status_code, (400, 409))
 
     def test_anonymous_wishlist_requires_auth(self):
         res = self.client.get("/api/wishlist/")

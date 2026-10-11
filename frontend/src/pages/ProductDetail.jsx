@@ -286,8 +286,11 @@ const ProductDetail = () => {
           }}
         >
           <img
-            src={getProductImage(product.image_url)}
+            src={getProductImage(product.image_url, product)}
             alt={product.title}
+            data-brand={product.brand || ""}
+            data-category={product.category || ""}
+            referrerPolicy="no-referrer"
             style={{ maxWidth: "100%", maxHeight: 260, objectFit: "contain" }}
             onError={handleImageError}
           />

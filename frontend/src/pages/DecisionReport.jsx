@@ -114,7 +114,14 @@ const DecisionReport = () => {
 
         if (!location.state?.demo) {
           fetchPromises.push(
-            API.get("/demo-comparison/", { params: { category } })
+            API.get("/demo-comparison/", {
+              params: {
+                category,
+                base_price: Number(dataObj.product?.price) || undefined,
+                title: dataObj.product?.title || undefined,
+                source_platform: dataObj.product?.platform || undefined,
+              },
+            })
               .then((res) => {
                 if (!cancelled && res.data) {
                   setDemo(res.data);
@@ -415,8 +422,11 @@ const DecisionReport = () => {
         <div style={{ textAlign: "center", paddingBottom: "1rem", borderBottom: "1px solid var(--border-color)" }}>
           <div style={{ marginBottom: "1rem" }}>
             <img
-              src={getProductImage(product.image_url)}
+              src={getProductImage(product.image_url, product)}
               alt={product.title}
+              data-brand={product.brand || ""}
+              data-category={product.category || ""}
+              referrerPolicy="no-referrer"
               style={{ maxHeight: 110, maxWidth: "100%", objectFit: "contain", borderRadius: 10 }}
               onError={handleImageError}
             />

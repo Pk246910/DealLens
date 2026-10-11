@@ -52,10 +52,56 @@ def _first_text(soup, selectors: list) -> str | None:
 
 
 def _first_src(soup, selectors: list) -> str | None:
+    import json
+
+    def _clean_candidate(val: str) -> str | None:
+        if not val or not isinstance(val, str):
+            return None
+        val = val.strip()
+        if val.startswith("//"):
+            val = "https:" + val
+        if not val.startswith(("http://", "https://")):
+            return None
+        low = val.lower()
+        if any(bad in low for bad in ("grey-pixel", "transparent-pixel", "1x1", "spacer.gif", "pixel.gif")):
+            return None
+        return val
+
     for sel in selectors:
-        el = soup.select_one(sel)
-        if el and el.get("src", "").strip():
-            return el["src"].strip()
+        for el in soup.select(sel):
+            for attr in ("data-old-hires", "data-src", "data-lazy-src", "data-original"):
+                cleaned = _clean_candidate(el.get(attr, ""))
+                if cleaned:
+                    return cleaned
+
+            dyn = (el.get("data-a-dynamic-image") or "").strip()
+            if dyn.startswith("{"):
+                try:
+                    dyn_map = json.loads(dyn)
+                    if isinstance(dyn_map, dict) and dyn_map:
+                        best_url = max(
+                            dyn_map.items(),
+                            key=lambda kv: (kv[1][0] * kv[1][1])
+                            if isinstance(kv[1], list) and len(kv[1]) >= 2
+                            else 0,
+                        )[0]
+                        cleaned = _clean_candidate(best_url)
+                        if cleaned:
+                            return cleaned
+                except Exception:
+                    pass
+
+            srcset = (el.get("srcset") or "").strip()
+            if srcset:
+                parts = [p.strip().split()[0] for p in srcset.split(",") if p.strip()]
+                for candidate in reversed(parts):
+                    cleaned = _clean_candidate(candidate)
+                    if cleaned:
+                        return cleaned
+
+            cleaned = _clean_candidate(el.get("src", ""))
+            if cleaned:
+                return cleaned
     return None
 
 

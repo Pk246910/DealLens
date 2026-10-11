@@ -39,7 +39,16 @@ const AnalysisResult = ({ data, analysisId }) => {
       return;
     }
     let cancelled = false;
-    API.get("/demo-comparison/", { params: { category: demoCategory } })
+    const basePrice = Number(product.price) || 0;
+    API.get("/demo-comparison/", {
+      params: {
+        category: demoCategory,
+        base_price: basePrice > 0 ? basePrice : undefined,
+        title: product.title || undefined,
+        source_platform: product.platform || undefined,
+        mrp: Number(product.mrp) || undefined,
+      },
+    })
       .then((res) => {
         if (!cancelled) setDemo(res.data);
       })
@@ -49,7 +58,7 @@ const AnalysisResult = ({ data, analysisId }) => {
     return () => {
       cancelled = true;
     };
-  }, [data, verifiedCount, demoCategory, analysisId]);
+  }, [data, verifiedCount, demoCategory, analysisId, product.price, product.title, product.platform, product.mrp]);
 
   if (!data) return null;
 
@@ -66,7 +75,7 @@ const AnalysisResult = ({ data, analysisId }) => {
     in_stock: true,
     coupon_code: l.coupon_code || null,
     coupon_discount: 0,
-    source_url: l.product_url || "",
+    source_url: l.product_url || l.source_url || "",
     data_source: "demo",
     is_demo: true,
     is_cheapest: false,
@@ -76,24 +85,40 @@ const AnalysisResult = ({ data, analysisId }) => {
     score: null,
   }));
 
-  const displayRows = [
-    ...scoredListings.filter((l) => l.data_source !== "unavailable"),
-    ...demoRows,
+  const existingPlatforms = new Set(
+    scoredListings
+      .filter((l) => l.data_source !== "unavailable" && l.price > 0)
+      .map((l) => l.platform)
+  );
+  const filteredDemoRows = demoRows.filter((d) => !existingPlatforms.has(d.platform));
+
+  const rawDisplayRows = [
+    ...scoredListings.filter((l) => l.data_source !== "unavailable" && l.price > 0),
+    ...filteredDemoRows,
   ];
+
+  const validCombinedPrices = rawDisplayRows.map((r) => r.price).filter((p) => p > 0);
+  const minCombinedPrice = validCombinedPrices.length > 0 ? Math.min(...validCombinedPrices) : 0;
+
+  const displayRows = rawDisplayRows.map((r) => ({
+    ...r,
+    is_cheapest: r.price === minCombinedPrice && r.price > 0,
+    savings_vs_this: r.price > minCombinedPrice ? Math.round(r.price - minCombinedPrice) : 0,
+  }));
 
   const verifiedRows = displayRows.filter(
     (l) => l.price > 0 && l.data_source !== "unavailable" && !l.is_demo
   );
-  const referenceRows = demoRows;
+  const referenceRows = filteredDemoRows;
   const nV = verifiedRows.length;
   const nR = referenceRows.length;
   const countLabel =
     nR > 0
-      ? `${nV} verified listing${nV === 1 ? "" : "s"} + ${nR} reference store${nR === 1 ? "" : "s"}`
+      ? `${nV} verified listing${nV === 1 ? "" : "s"} + ${nR} comparable marketplace${nR === 1 ? "" : "s"}`
       : `${nV} verified marketplace listing${nV === 1 ? "" : "s"}`;
 
-  const bestDeal = scoredListings.length > 0 ? scoredListings[0] : null;
-  const cheapest = listings.find((l) => l.is_cheapest);
+  const bestDeal = displayRows.length > 0 ? displayRows[0] : null;
+  const cheapest = displayRows.find((l) => l.is_cheapest) || listings.find((l) => l.is_cheapest);
   const bestRated = comparison.best_rating;
   const fastest = comparison.fastest_delivery;
 
@@ -127,8 +152,11 @@ const AnalysisResult = ({ data, analysisId }) => {
           }}
         >
           <img
-            src={getProductImage(product.image_url)}
+            src={getProductImage(product.image_url, product)}
             alt={product.title || "Product"}
+            data-brand={product.brand || ""}
+            data-category={product.category || ""}
+            referrerPolicy="no-referrer"
             style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
             onError={handleImageError}
           />

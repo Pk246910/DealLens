@@ -22,7 +22,7 @@ _CONFIG = {
         "mrp": ["div.yRaY8j.Z3DfBu", "div._3I9_wc.Z3DfBu"],
         "rating": ["div.XQDdHH._1QuN7K", "div._3LWZlK._1BLPMq"],
         "reviews": ["span.Wphh3N", "span._13vcmD"],
-        "image": ["img._396cs4._3n0Glp", "img._2r_T1I"],
+        "image": ["img.DByuf4", "img._53J4C-", "img._396cs4._3n0Glp", "img._396cs4", "img._2r_T1I", "div._4WELSP img", "div.vU5WPQ img"],
         "brand": ["span.BWIKRJ._10LaC2", "span._2WkVRV"],
         "availability": ["div._16FRkq"],
         "description": ["div._1m3Rg7", "div._11pzQk"],

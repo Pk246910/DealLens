@@ -171,11 +171,29 @@ class URLAnalysisSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "status", "detected_platform", "product", "analysis_result", "error_message", "viewed_at", "created_at"]
 
     def get_product_image(self, obj):
-        if obj.product and obj.product.image_url:
+        if obj.product and obj.product.image_url and "placehold.co" not in obj.product.image_url:
             return obj.product.image_url
         result = obj.analysis_result or {}
         p = result.get("product", {})
-        return p.get("image_url", "")
+        img = p.get("image_url", "")
+        if img and "placehold.co" not in img:
+            return img
+        from .services.benchmark_service import resolve_product_image
+        return resolve_product_image(
+            title=p.get("title") or (obj.product.title if obj.product else ""),
+            brand=p.get("brand") or (obj.product.brand if obj.product else ""),
+            category=p.get("category") or (obj.product.category if obj.product else ""),
+            current_image=img,
+        )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        res = data.get("analysis_result")
+        if isinstance(res, dict) and isinstance(res.get("product"), dict):
+            prod = res["product"]
+            if not prod.get("image_url") or "placehold.co" in prod.get("image_url", ""):
+                prod["image_url"] = data.get("product_image") or ""
+        return data
 
 
 class PriceHistorySerializer(serializers.ModelSerializer):

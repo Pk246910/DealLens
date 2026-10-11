@@ -22,7 +22,7 @@ _CONFIG = {
         "mrp": [".a-price.a-text-price .a-offscreen", "#priceblock_listprice"],
         "rating": ["#acrPopover .a-icon-alt", "#acrCustomerReviewText"],
         "reviews": ["#acrCustomerReviewText"],
-        "image": ["#landingImage", "#imgBlkFront"],
+        "image": ["#landingImage", "#imgBlkFront", "#imgTagWrapperId img", "#main-image-container img", "img.a-dynamic-image"],
         "brand": ["#bylineInfo"],
         "availability": ["#availability", "#outOfStock"],
         "description": ["#productDescription", "#feature-bullets"],

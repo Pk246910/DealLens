@@ -38,8 +38,11 @@ const ProductCard = ({ product, action, footerText, linkTo }) => {
       <Link to={targetLink} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
         <div className="image-showcase">
           <img
-            src={getProductImage(product.image_url)}
+            src={getProductImage(product.image_url, product)}
             alt={product.title}
+            data-brand={product.brand || ""}
+            data-category={product.category || ""}
+            referrerPolicy="no-referrer"
             loading="lazy"
             onError={handleImageError}
           />

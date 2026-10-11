@@ -225,8 +225,11 @@ const Wishlist = () => {
                   }}
                 >
                   <img
-                    src={getProductImage(p.image_url)}
+                    src={getProductImage(p.image_url, p)}
                     alt={p.title}
+                    data-brand={p.brand || ""}
+                    data-category={p.category || ""}
+                    referrerPolicy="no-referrer"
                     onError={handleImageError}
                     style={{
                       maxHeight: "100%",

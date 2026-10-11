@@ -133,8 +133,20 @@ def extract_meta(soup) -> dict:
     title = content('meta[property="og:title"]')
     if title:
         found["product_name"] = title
-    image = content('meta[property="og:image"]')
+    image = content(
+        'meta[property="og:image"]',
+        'meta[property="og:image:secure_url"]',
+        'meta[name="og:image"]',
+        'meta[name="twitter:image"]',
+        'meta[property="twitter:image"]',
+    )
+    if not image:
+        link_img = soup.select_one('link[rel="image_src"]')
+        if link_img and link_img.get("href", "").strip():
+            image = link_img["href"].strip()
     if image:
+        if image.startswith("//"):
+            image = "https:" + image
         found["image_url"] = image
     price = content('meta[property="product:price:amount"]', 'meta[name="price"]')
     if price:
