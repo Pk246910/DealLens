@@ -17,16 +17,16 @@ const API = axios.create({
 // Attach JWT + Guest ID on every request (skip for auth endpoints to avoid CORS preflight)
 API.interceptors.request.use((config) => {
   const isAuth = config.url && (config.url.includes("/users/login") || config.url.includes("/users/register") || config.url.includes("/users/token"));
-  const token = localStorage.getItem("shopsmart_access");
+  const token = localStorage.getItem("deallens_access");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   // Guest ID only for wishlist / products, not for auth
   if (!isAuth) {
-    let guestId = localStorage.getItem("shopsmart_guest_id");
+    let guestId = localStorage.getItem("deallens_guest_id");
     if (!guestId) {
       guestId = "guest_" + crypto.randomUUID();
-      localStorage.setItem("shopsmart_guest_id", guestId);
+      localStorage.setItem("deallens_guest_id", guestId);
     }
     config.headers["X-Guest-ID"] = guestId;
     if (config.method === "get" && config.url && config.url.includes("wishlist")) {
@@ -47,19 +47,19 @@ API.interceptors.response.use(
   async (error) => {
     const original = error.config;
     if (error.response && error.response.status === 401 && !original._retry) {
-      const refresh = localStorage.getItem("shopsmart_refresh");
+      const refresh = localStorage.getItem("deallens_refresh");
       if (refresh) {
         original._retry = true;
         try {
           const res = await axios.post(`${API_BASE_URL}/users/token/refresh/`, { refresh });
-          localStorage.setItem("shopsmart_access", res.data.access);
+          localStorage.setItem("deallens_access", res.data.access);
           original.headers.Authorization = `Bearer ${res.data.access}`;
           return API(original);
         } catch (_e) {
-          localStorage.removeItem("shopsmart_access");
-          localStorage.removeItem("shopsmart_refresh");
-          localStorage.removeItem("shopsmart_user");
-          window.dispatchEvent(new Event("shopsmart:logout"));
+          localStorage.removeItem("deallens_access");
+          localStorage.removeItem("deallens_refresh");
+          localStorage.removeItem("deallens_user");
+          window.dispatchEvent(new Event("deallens:logout"));
         }
       }
     }

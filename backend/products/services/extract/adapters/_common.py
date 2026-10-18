@@ -24,7 +24,7 @@ from ..base import (
 from ..browser import available as browser_available
 from ..browser import render as browser_render
 from ..http import fetch
-from ..structured import extract_json_ld, extract_meta
+from ..structured import extract_embedded_state, extract_json_ld, extract_meta
 from products.services.product_extractor import ExtractionError
 
 logger = logging.getLogger(__name__)
@@ -179,13 +179,17 @@ def run_standard(*, platform: str, url: str, cfg: dict) -> ExtractedProduct:
     soup = BeautifulSoup(html, "html.parser")
 
     structured = extract_json_ld(soup)
+    embedded = extract_embedded_state(soup)
     meta = extract_meta(soup)
-    merged = {**meta, **structured}
+    merged = {**meta, **embedded, **structured}
     for key, value in merged.items():
         if value is not None and getattr(result, key, None) in (None, "", 0):
             setattr(result, key, value)
     if result.product_name and result.price is not None:
-        result.extraction_method = METHOD_JSON_LD if structured.get("product_name") else METHOD_METADATA
+        result.extraction_method = (
+            METHOD_JSON_LD if (structured.get("product_name") or embedded.get("product_name"))
+            else METHOD_METADATA
+        )
 
     if _apply_selectors(result, soup, cfg) and result.extraction_method == METHOD_NONE:
         if result.product_name or result.price is not None:
@@ -201,8 +205,9 @@ def run_standard(*, platform: str, url: str, cfg: dict) -> ExtractedProduct:
         if rendered["html"]:
             rsoup = BeautifulSoup(rendered["html"], "html.parser")
             r_struct = extract_json_ld(rsoup)
+            r_embed = extract_embedded_state(rsoup)
             r_meta = extract_meta(rsoup)
-            for key, value in {**r_meta, **r_struct}.items():
+            for key, value in {**r_meta, **r_embed, **r_struct}.items():
                 if value is not None and getattr(result, key, None) in (None, "", 0):
                     setattr(result, key, value)
             _apply_selectors(result, rsoup, cfg)

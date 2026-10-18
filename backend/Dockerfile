@@ -1,4 +1,4 @@
-# ---- ShopSmart backend (Django + DRF + Gunicorn) ----
+# ---- DealLens backend (Django + DRF + Gunicorn) ----
 FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

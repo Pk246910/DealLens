@@ -13,6 +13,10 @@ export const PLATFORMS = [
   { name: "AJIO", icon: "👟", color: getPlatformColor("AJIO") },
   { name: "Meesho", icon: "🏷️", color: getPlatformColor("Meesho") },
   { name: "Tata CLiQ", icon: "🏬", color: getPlatformColor("Tata CLiQ") },
+  { name: "Nykaa", icon: "💄", color: getPlatformColor("Nykaa") },
+  { name: "JioMart", icon: "🛍️", color: getPlatformColor("JioMart") },
+  { name: "Snapdeal", icon: "🏷️", color: getPlatformColor("Snapdeal") },
+  { name: "Vijay Sales", icon: "🔌", color: getPlatformColor("Vijay Sales") },
 ];
 
 const ANALYSIS_STEPS = [
@@ -132,7 +136,7 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
               setError(null);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Paste a product URL (e.g. https://www.flipkart.com/... or amazon.in/...)"
+            placeholder="Paste any product URL (Amazon, Flipkart, Nykaa, JioMart, Croma, or any online store...)"
             disabled={loading}
             aria-label="Product URL to analyze"
             style={{
@@ -321,7 +325,7 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
                   flex: 1,
                   height: 4,
                   borderRadius: 2,
-                  background: i <= stepIndex ? "var(--accent-cyan)" : "rgba(255, 255, 255, 0.08)",
+                  background: i <= stepIndex ? "var(--accent-cyan)" : "var(--border-color)",
                   boxShadow: i <= stepIndex ? "0 0 8px rgba(6, 182, 212, 0.5)" : "none",
                   transition: "background 0.3s ease, box-shadow 0.3s ease",
                 }}
@@ -354,9 +358,9 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
       )}
 
       {/* Supported Store Chips */}
-      <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+      <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
         <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>
-          Supported Platforms:
+          Universal Analyzer:
         </span>
         {PLATFORMS.map((p) => (
           <span
@@ -378,6 +382,23 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
             <span>{p.name}</span>
           </span>
         ))}
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.3rem",
+            padding: "0.15rem 0.55rem",
+            borderRadius: "6px",
+            background: "rgba(6, 182, 212, 0.12)",
+            border: "1px solid rgba(6, 182, 212, 0.35)",
+            fontSize: "0.72rem",
+            color: "var(--accent-cyan)",
+            fontWeight: 700,
+          }}
+        >
+          <span>🌐</span>
+          <span>+ Any Online Store</span>
+        </span>
       </div>
     </div>
   );

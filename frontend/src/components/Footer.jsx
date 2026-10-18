@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Shield, Cpu, Activity } from "lucide-react";
+import BrandLogo from "./BrandLogo";
 
 const Footer = () => {
   return (
@@ -29,19 +30,7 @@ const Footer = () => {
         {/* Brand & Mission Column */}
         <div style={{ maxWidth: 320 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
-            <span style={{ fontSize: "1.35rem", filter: "drop-shadow(0 0 8px rgba(6, 182, 212, 0.4))" }}>⚡</span>
-            <span
-              style={{
-                fontSize: "1.3rem",
-                fontWeight: 800,
-                background: "var(--gradient-brand)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              ShopSmart
-            </span>
+            <BrandLogo iconSize={32} fontSize="1.35rem" />
           </div>
 
           <p style={{ fontSize: "0.85rem", lineHeight: 1.6, color: "var(--text-muted)", marginBottom: "1.25rem" }}>
@@ -216,7 +205,7 @@ const Footer = () => {
         }}
       >
         <div>
-          © 2026 <strong>ShopSmart</strong> — AI-Powered E-Commerce Product Comparison & Decision-Support Platform.
+          © 2026 <strong>DealLens</strong> — AI-Powered Multi-Marketplace Price Comparison & Decision-Support Platform.
         </div>
         <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
           <span>Final Year Project</span>

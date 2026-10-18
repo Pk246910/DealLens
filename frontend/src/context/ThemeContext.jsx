@@ -4,11 +4,11 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [darkMode, setDarkMode] = useState(
-    () => localStorage.getItem("shopsmart_theme") === "dark"
+    () => localStorage.getItem("deallens_theme") === "dark"
   );
 
   useEffect(() => {
-    localStorage.setItem("shopsmart_theme", darkMode ? "dark" : "light");
+    localStorage.setItem("deallens_theme", darkMode ? "dark" : "light");
     if (darkMode) {
       document.documentElement.classList.add("dark");
     } else {

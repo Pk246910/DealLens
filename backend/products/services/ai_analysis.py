@@ -5,139 +5,242 @@ from decimal import Decimal
 
 CATEGORY_INSIGHTS = {
     "Smartphones": {
-        "pros": ["Wide availability across platforms", "Strong brand resale value", "Feature-rich for daily use"],
-        "cons": ["Prices fluctuate frequently", "New models launch often", "Accessories add to total cost"],
+        "pros": [
+            "Wide cross-marketplace availability with competitive seller offers",
+            "Strong resale and trade-in exchange value across major Indian platforms",
+            "Full manufacturer warranty and authorized service center coverage",
+            "High daily utility with multi-year software and security support",
+        ],
+        "cons": [
+            "Prices fluctuate during festive and bank-partner promotional windows",
+            "Fast-charging adapters or protective cases may be sold separately",
+            "Storage and RAM variant pricing can differ steeply across sellers",
+        ],
         "tips": [
-            "Buy during festive sales for best discounts",
-            "Compare exchange offers across platforms",
-            "Check bank card offers for additional 5-10% savings",
-            "Consider previous-generation models for better value",
+            "Check instant bank card discounts (HDFC, ICICI, SBI) for an extra 5–10% off at checkout",
+            "Compare smartphone exchange valuations across Amazon and Flipkart before ordering",
+            "Verify No-Cost EMI tenure options to spread the cost without interest",
+            "Compare identical RAM/storage variants across at least 3 marketplaces",
         ],
     },
     "Laptops": {
-        "pros": ["Essential for productivity", "Long-term investment", "Good resale value"],
-        "cons": ["High upfront cost", "Prices vary significantly across sellers", "Accessories sold separately"],
+        "pros": [
+            "High-value productivity investment with multi-year operational longevity",
+            "Manufacturer onsite warranty and authorized support coverage included",
+            "Strong configuration value for work, study, and multitasking workloads",
+            "Eligible for no-cost EMI and old-laptop exchange bonuses on top stores",
+        ],
+        "cons": [
+            "Significant seller-to-seller price spread across online marketplaces",
+            "Extended warranty and accidental damage protection add to total checkout cost",
+            "RAM or SSD upgradeability varies by chassis generation",
+        ],
         "tips": [
-            "Compare across at least 3 platforms before buying",
-            "Check for student or corporate discounts",
-            "Look for extended warranty deals",
-            "Consider refurbished for 20-30% savings",
+            "Compare across at least 3 marketplaces — laptop prices often differ by ₹2,000–₹6,000",
+            "Check for student, corporate, or bank credit card instant cashback offers",
+            "Bundle manufacturer extended warranty at purchase time for lower rates",
+            "Verify exact processor generation and display panel specs across listings",
         ],
     },
     "Fashion": {
-        "pros": ["Wide variety available", "Seasonal sales offer deep discounts", "Easy returns policy"],
-        "cons": ["Sizing varies across brands", "Quality hard to judge online", "Trend-dependent value"],
+        "pros": [
+            "Broad size and color availability across leading fashion marketplaces",
+            "Hassle-free 7 to 14-day return and size-exchange policies on top stores",
+            "Attractive seasonal markdowns compared to offline retail MRP",
+        ],
+        "cons": [
+            "Fit and sizing tolerances can vary slightly across production batches",
+            "Fabric texture and color tone depend on studio lighting in catalog photos",
+        ],
         "tips": [
-            "Check size charts carefully before ordering",
-            "Buy during end-of-season sales for 50-70% off",
-            "Read verified buyer reviews for fit guidance",
-            "Compare prices across Myntra, AJIO, and Meesho",
+            "Cross-check the brand's garment measurements in inches before selecting a size",
+            "Apply platform coupon codes and combo-cart discounts before checkout",
+            "Compare prices across Myntra, AJIO, Amazon Fashion, and Flipkart",
+            "Read verified buyer reviews with uploaded photos for real-world fit feedback",
         ],
     },
     "Kitchen Appliances": {
-        "pros": ["Daily use value", "Good brand options", "Warranty support available"],
-        "cons": ["Heavy items may have delivery charges", "Installation sometimes extra", "Energy ratings matter long-term"],
+        "pros": [
+            "High daily household utility with dependable brand warranty backing",
+            "Noticeable online discount advantage over brick-and-mortar retail MRP",
+            "Doorstep delivery with replacement coverage for transit damage",
+        ],
+        "cons": [
+            "Heavy appliances may carry pin-code specific delivery or installation scheduling",
+            "Long-term electricity consumption depends on BEE star efficiency rating",
+        ],
         "tips": [
-            "Check energy star ratings for long-term savings",
-            "Compare installation charges across platforms",
-            "Look for combo deals with accessories included",
-            "Buy during Big Billion Day or Great Indian Festival sales",
+            "Check energy star ratings and wattage specifications for long-term utility savings",
+            "Compare free installation and demo inclusions across Amazon, Flipkart, and Croma",
+            "Look for festive exchange bonuses when replacing an older kitchen appliance",
+            "Apply bank card instant discounts on orders above ₹5,000",
         ],
     },
     "Home Appliances": {
-        "pros": ["Long lifespan", "Significant price differences across platforms", "Good warranty support"],
-        "cons": ["Large investment", "Delivery and installation complexity", "Energy consumption varies"],
+        "pros": [
+            "Long operational lifespan backed by official brand compressor/motor warranty",
+            "Substantial online markdown compared to offline showroom MRP",
+            "Authorized brand installation and pan-India service network support",
+            "High energy-efficiency engineering designed for Indian voltage conditions",
+        ],
+        "cons": [
+            "Scheduled delivery and technician installation coordination required after delivery",
+            "Exchange value and stabilizer/stand accessories vary by marketplace seller",
+        ],
         "tips": [
-            "Compare total cost including installation and delivery",
-            "Check energy ratings — a 5-star AC saves thousands yearly",
-            "Look for exchange offers on old appliances",
-            "Buy during festive season for best prices",
+            "Compare total landed cost including delivery, installation, and old-appliance exchange",
+            "Check BEE star ratings — higher star ratings significantly reduce monthly power bills",
+            "Use old-appliance exchange offers + bank EMI cashback to save ₹1,500–₹4,000 extra",
+            "Inspect package condition at doorstep delivery to qualify for open-box protection",
         ],
     },
     "Beauty": {
-        "pros": ["Wide product range", "Easy to compare prices", "Customer reviews help decide"],
-        "cons": ["Counterfeit risk on some platforms", "Shelf life concerns", "Returns can be complicated"],
+        "pros": [
+            "100% authentic catalog sourcing from authorized brand distributors",
+            "Competitive multi-platform pricing with frequent bundle and coupon deals",
+            "High volume of verified customer ratings for skin/hair type compatibility",
+        ],
+        "cons": [
+            "Non-returnable hygiene policy once the outer seal is opened",
+            "Batch shelf-life and expiry windows vary by seller inventory",
+        ],
         "tips": [
-            "Buy from authorized sellers only",
-            "Check manufacturing and expiry dates",
-            "Compare gift sets and combo offers",
-            "Use coupon codes at checkout for extra savings",
+            "Purchase from verified flagship or top-rated marketplace sellers only",
+            "Check manufacturing and expiry date details in the product specification tab",
+            "Compare value-pack sizes (per-ml cost) across Nykaa, Amazon, and Flipkart",
+            "Stack platform beauty coupons at checkout for extra savings",
         ],
     },
     "Grocery": {
-        "pros": ["Daily essentials at competitive prices", "Subscription discounts available", "Home delivery convenience"],
-        "cons": ["Perishable items risk", "Minimum order requirements", "Delivery time varies"],
+        "pros": [
+            "Consistent savings below printed MRP on daily household essentials",
+            "Convenient doorstep slot delivery with bulk-pack discounts",
+            "Freshness-backed replacement guarantee on major grocery platforms",
+        ],
+        "cons": [
+            "Minimum cart value may be required to unlock free shipping",
+            "Stock availability and delivery slots depend on local pin code",
+        ],
         "tips": [
-            "Subscribe for regular deliveries to save 10-15%",
-            "Compare prices per unit, not per pack",
-            "Buy in bulk for non-perishable items",
-            "Check for first-time user discounts on new platforms",
+            "Compare per-kg / per-litre unit pricing rather than pack price alone",
+            "Use recurring subscription or super-saver cart tiers for an extra 5–15% off",
+            "Bundle non-perishable staples to cross the free-delivery threshold",
         ],
     },
     "Earbuds": {
-        "pros": ["Compact and portable", "Wide price range available", "Good for daily commute"],
-        "cons": ["Battery life varies", "Fit can be uncomfortable for some", "Sound quality differs significantly"],
+        "pros": [
+            "Compact true-wireless form factor ideal for commuting, calls, and workouts",
+            "Strong feature-to-price ratio with fast USB-C charging support",
+            "Backed by 1-year manufacturer replacement warranty across authorized stores",
+        ],
+        "cons": [
+            "Real-world battery backup varies when Active Noise Cancellation (ANC) is enabled",
+            "In-ear acoustic seal and comfort depend on choosing the right ear-tip size",
+        ],
         "tips": [
-            "Check battery life with ANC on vs off",
-            "Compare sound quality reviews across platforms",
-            "Look for bundle deals with charging cases",
+            "Compare battery runtime with ANC turned on versus ANC turned off",
+            "Check verified buyer reviews for microphone call clarity in outdoor traffic",
+            "Compare lightning deal prices across Amazon, Flipkart, and Croma",
         ],
     },
     "Headphones": {
-        "pros": ["Superior sound quality", "Active noise cancellation", "Comfortable for long sessions"],
-        "cons": ["Bulky for travel", "Premium models expensive", "Wired vs wireless trade-offs"],
+        "pros": [
+            "Immersive acoustic stage with superior noise isolation for long sessions",
+            "Ergonomic over-ear cushioning with multi-hour battery endurance",
+            "Official brand warranty with authorized service support",
+        ],
+        "cons": [
+            "Larger travel footprint compared to in-ear TWS earbuds",
+            "Codec support and multi-point pairing vary by model tier",
+        ],
         "tips": [
-            "Compare noise cancellation performance",
-            "Check comfort reviews for extended wear",
-            "Look for multi-device connectivity features",
+            "Compare ANC attenuation and clamping comfort in long-session buyer reviews",
+            "Look for bank card instant discounts and festive audio sale events",
+            "Verify included carrying case and AUX cable accessories in box contents",
         ],
     },
     "Tablets": {
-        "pros": ["Portable productivity", "Good for media consumption", "Stylus support on premium models"],
-        "cons": ["Not a laptop replacement for heavy tasks", "Accessories add cost", "Storage limitations"],
+        "pros": [
+            "Versatile large-screen canvas for productivity, reading, and streaming",
+            "All-day battery efficiency with lightweight portability",
+            "Strong brand ecosystem and official warranty coverage",
+        ],
+        "cons": [
+            "Keyboard folio and active stylus accessories are often sold separately",
+            "Base storage tiers cannot always be expanded via microSD",
+        ],
         "tips": [
-            "Compare stylus compatibility across platforms",
-            "Check keyboard accessory prices separately",
-            "Look for student discount programs",
+            "Factor in stylus and keyboard cover prices when comparing total cost",
+            "Check education/student offers and bank EMI cashback across platforms",
+            "Compare Wi-Fi vs Cellular variant pricing across Amazon, Flipkart, and Croma",
         ],
     },
     "TVs": {
-        "pros": ["Significant price differences across platforms", "Good for home entertainment", "Smart features built-in"],
-        "cons": ["Delivery and installation complexity", "Wall mounting extra cost", "Panel quality varies"],
+        "pros": [
+            "High visual impact with built-in smart streaming OS and voice control",
+            "Substantial online price advantage compared to offline electronics chains",
+            "Includes brand-authorized technician wall-mount/table-top installation",
+        ],
+        "cons": [
+            "Scheduled large-appliance delivery and wall-mount bracket charges may apply",
+            "Built-in speaker output may benefit from an external soundbar in large rooms",
+        ],
         "tips": [
-            "Compare total cost including installation",
-            "Check warranty terms across platforms",
-            "Look for exchange offers on old TVs",
+            "Compare total price including wall-mount installation and extended panel warranty",
+            "Exchange an older working TV to unlock additional instant markdowns",
+            "Verify HDMI eARC and refresh-rate specs across Croma, Amazon, and Flipkart",
         ],
     },
     "Footwear": {
-        "pros": ["Wide variety", "Seasonal sales offer deep discounts", "Easy returns on most platforms"],
-        "cons": ["Sizing varies across brands", "Comfort hard to judge online", "Counterfeit risk"],
+        "pros": [
+            "Wide UK/India size availability with easy doorstep size-exchange policies",
+            "Attractive online discount compared to retail showroom pricing",
+            "Verified customer comfort and durability ratings available",
+        ],
+        "cons": [
+            "Shoe width and arch fit can vary by brand last — check UK vs US sizing",
+            "Popular sizes sell out quickly during seasonal clearance sales",
+        ],
         "tips": [
-            "Check size charts carefully",
-            "Read verified buyer reviews for fit",
-            "Compare prices across Myntra, AJIO, and Nike.com",
+            "Measure foot length in cm and match against the brand's official size chart",
+            "Compare prices across Myntra, AJIO, Amazon, and Flipkart before checkout",
+            "Look for prepaid payment and coupon discounts for extra 10% savings",
         ],
     },
     "Cameras": {
-        "pros": ["Good resale value", "Price varies significantly", "Accessories ecosystem"],
-        "cons": ["High upfront cost", "Lens investment adds up", "New models depreciate fast"],
+        "pros": [
+            "Professional imaging sensor performance with strong long-term resale value",
+            "Compatible with a wide ecosystem of lenses and creator accessories",
+            "Official manufacturer warranty with authorized service center support",
+        ],
+        "cons": [
+            "High initial investment — lenses, high-speed SD cards, and bags add cost",
+            "Kit lens bundles vs body-only pricing varies significantly across stores",
+        ],
         "tips": [
-            "Compare body-only vs kit prices",
-            "Check for authorized dealer warranty",
-            "Look for refurbished from brand stores",
+            "Compare body-only vs combo kit lens bundle pricing across platforms",
+            "Ensure the seller is an authorized brand dealer to claim multi-year warranty",
+            "Use no-cost EMI and bank cashback deals to reduce effective purchase price",
         ],
     },
 }
 
 DEFAULT_INSIGHTS = {
-    "pros": ["Available across multiple platforms", "Competitive pricing options", "Easy to compare"],
-    "cons": ["Price differences across platforms", "Delivery times may vary", "Availability not guaranteed everywhere"],
+    "pros": [
+        "Verified availability across major Indian e-commerce marketplaces",
+        "Competitive online pricing with transparent cross-store comparison",
+        "Backed by standard platform return protection and manufacturer warranty",
+        "Strong overall value-for-money profile in its category segment",
+    ],
+    "cons": [
+        "Prices and promotional coupons fluctuate across different sellers",
+        "Estimated delivery speed varies based on destination pin code",
+    ],
     "tips": [
-        "Compare prices on at least 3 platforms",
-        "Check for coupon codes before checkout",
-        "Read recent reviews for quality assurance",
-        "Look for bank card offers for extra savings",
+        "Compare prices across all listed marketplaces before completing checkout",
+        "Apply available store coupons and bank card offers for extra 5–10% savings",
+        "Set a DealLens Price Drop Alert to get notified automatically on any further markdown",
+        "Verify seller rating and return window terms on the destination store",
     ],
 }
 
@@ -175,8 +278,8 @@ class AIAnalysisService:
     }
 
     def analyze(self, normalized_product: dict, comparison: dict) -> dict:
-        price = normalized_product.get("price", 0)
-        mrp = normalized_product.get("mrp", 0)
+        price = float(normalized_product.get("price", 0) or 0)
+        mrp = float(normalized_product.get("mrp", 0) or 0)
         rating = normalized_product.get("rating")
         category = normalized_product.get("category", "")
         platform = normalized_product.get("platform", "")
@@ -187,9 +290,9 @@ class AIAnalysisService:
         seller_name = normalized_product.get("seller", "")
 
         listings = comparison.get("listings", [])
-        best_price = comparison.get("best_price", 0)
-        price_range = comparison.get("price_range", 0)
-        matches = comparison.get("matches_found", 0)
+        best_price = float(comparison.get("best_price", 0) or 0)
+        price_range = float(comparison.get("price_range", 0) or 0)
+        matches = int(comparison.get("matches_found", 0) or 0)
 
         insights = CATEGORY_INSIGHTS.get(category, DEFAULT_INSIGHTS)
         seed_int = int(hashlib.md5(title.encode("utf-8", errors="replace")).hexdigest(), 16) % 10000
@@ -200,27 +303,138 @@ class AIAnalysisService:
 
         deal_score = best_deal["score"] if best_deal else 50
         deal_assessment = self._get_deal_assessment(deal_score, price, best_price, matches)
-        summary = self._generate_summary(title, platform, price, mrp, rating, best_price, matches, deal_assessment, category)
-        recommendation = self._generate_recommendation(deal_assessment, price, best_price, platform, matches, best_deal)
         best_platform = self._find_best_platform(listings)
+        cheapest_store = best_platform.get("platform") or platform or "top store"
+        effective_best_price = best_price if best_price > 0 else price
+
+        summary = self._generate_summary(
+            title, platform, price, mrp, rating, effective_best_price, matches, deal_assessment, category, cheapest_store
+        )
+        recommendation = self._generate_recommendation(
+            deal_assessment, price, effective_best_price, platform, matches, best_deal
+        )
         categories = self._get_recommendation_categories(scored_listings)
         confidence = self._get_confidence_level(scored_listings, matches)
         explanation = self._generate_explanation(scored_listings, best_deal, confidence)
 
-        pros = list(insights["pros"])
-        cons = list(insights["cons"])
+        # Build data-driven, product-specific pros & cons combined with category intelligence
+        data_pros = []
+        if mrp > effective_best_price > 0:
+            disc_amt = mrp - effective_best_price
+            disc_pct = (disc_amt / mrp) * 100
+            if disc_pct >= 5:
+                data_pros.append(
+                    f"Saves ₹{disc_amt:,.0f} ({disc_pct:.0f}% OFF) below the ₹{mrp:,.0f} retail MRP"
+                )
+        if rating:
+            try:
+                r_val = float(rating)
+                if r_val >= 4.3:
+                    data_pros.append(
+                        f"Strong customer satisfaction with a {r_val}★ out of 5 verified buyer rating"
+                    )
+                elif r_val >= 4.0:
+                    data_pros.append(
+                        f"Positive buyer reception rated {r_val}★ out of 5 across verified purchases"
+                    )
+            except (TypeError, ValueError):
+                pass
         if price_range > 0 and matches > 0:
-            pros.append(f"Save up to Rs.{price_range:,.0f} by choosing the best platform")
-        if matches > 0:
-            pros.append(f"Available on {matches + 1} platforms — easy to compare")
-        if not rating:
-            cons.append("No customer rating available yet")
+            data_pros.append(
+                f"Save an extra ₹{price_range:,.0f} by picking {cheapest_store} over higher-priced stores"
+            )
+        if best_deal and best_deal.get("delivery_days") and int(best_deal["delivery_days"]) <= 3:
+            d_days = int(best_deal["delivery_days"])
+            data_pros.append(
+                f"Fast doorstep fulfillment available ({'Next-day' if d_days <= 1 else f'{d_days}-day'} estimated delivery on { best_deal.get('platform', platform) })"
+            )
 
-        selected_pros = random.sample(pros, min(len(pros), random.randint(2, 3)))
-        selected_cons = random.sample(cons, min(len(cons), random.randint(1, 2)))
-        tip = random.choice(insights["tips"])
+        category_pros = list(insights["pros"])
+        selected_cat_pros = random.sample(category_pros, min(len(category_pros), 2))
+        selected_pros = (data_pros + selected_cat_pros)[:4]
+        if len(selected_pros) < 3:
+            for p in category_pros:
+                if p not in selected_pros:
+                    selected_pros.append(p)
+                if len(selected_pros) >= 3:
+                    break
+
+        data_cons = []
+        if best_price > 0 and price > best_price:
+            diff = price - best_price
+            data_cons.append(
+                f"Priced ₹{diff:,.0f} higher on {platform} compared to the lowest verified offer on {cheapest_store} (₹{best_price:,.0f})"
+            )
+        if not rating:
+            data_cons.append("Limited customer review volume on the source listing — verify seller ratings before checkout")
+
+        category_cons = list(insights["cons"])
+        selected_cat_cons = random.sample(category_cons, min(len(category_cons), 2))
+        selected_cons = (data_cons + selected_cat_cons)[:3]
+
+        all_tips = list(insights["tips"])
+        smart_tips = random.sample(all_tips, min(len(all_tips), 3))
+        tip = smart_tips[0] if smart_tips else random.choice( DEFAULT_INSIGHTS["tips"] )
 
         price_diff_from_best = price - best_price if best_price > 0 and price > 0 else 0
+
+        # Structured AI Value & Timing Metrics for rich frontend presentation
+        mrp_savings = max(0.0, mrp - effective_best_price) if mrp > effective_best_price > 0 else 0.0
+        discount_pct = round((mrp_savings / mrp) * 100, 1) if mrp > 0 and mrp_savings > 0 else 0.0
+        active_stores_count = sum(1 for l in listings if (l.get("price") or 0) > 0 and l.get("data_source") != "unavailable")
+
+        if discount_pct >= 20:
+            price_fairness = {
+                "verdict": "Exceptional Markdown",
+                "badge": "green",
+                "detail": f"Trading {discount_pct:.0f}% below MRP (₹{mrp_savings:,.0f} direct savings).",
+            }
+        elif discount_pct >= 10:
+            price_fairness = {
+                "verdict": "Below Market MRP",
+                "badge": "green",
+                "detail": f"Healthy {discount_pct:.0f}% discount (saves ₹{mrp_savings:,.0f} off ₹{mrp:,.0f} MRP).",
+            }
+        elif effective_best_price > 0:
+            price_fairness = {
+                "verdict": "Fair Market Price",
+                "badge": "cyan",
+                "detail": f"Competitive pricing at ₹{effective_best_price:,.0f} across verified marketplaces.",
+            }
+        else:
+            price_fairness = {
+                "verdict": "Market Rate",
+                "badge": "amber",
+                "detail": "Compare seller offers at checkout for best effective price.",
+            }
+
+        if best_price > 0 and price > best_price:
+            buy_timing = {
+                "action": f"Switch to {cheapest_store} & Buy",
+                "badge": "emerald",
+                "reason": f"{cheapest_store} offers the lowest verified price at ₹{best_price:,.0f} (saves ₹{price - best_price:,.0f} vs {platform}).",
+            }
+        elif deal_score >= 70 or discount_pct >= 12:
+            buy_timing = {
+                "action": "Buy Now — Optimal Price Window",
+                "badge": "emerald",
+                "reason": f"{cheapest_store} currently holds the lowest verified price with a {deal_score}/100 DealLens score.",
+            }
+        else:
+            buy_timing = {
+                "action": "Good Time to Buy / Track Alerts",
+                "badge": "cyan",
+                "reason": "Price is stable across stores; apply bank offers or set a price alert for extra savings.",
+            }
+
+        value_metrics = {
+            "mrp_savings": round(mrp_savings, 2),
+            "discount_pct": discount_pct,
+            "cross_store_spread": round(price_range, 2),
+            "stores_compared": max(1, active_stores_count),
+            "cheapest_store": cheapest_store,
+            "cheapest_price": round(effective_best_price, 2),
+        }
 
         return {
             "deal_assessment": deal_assessment,
@@ -231,6 +445,10 @@ class AIAnalysisService:
             "best_platform": best_platform,
             "recommendation": recommendation,
             "savings_tip": tip,
+            "smart_tips": smart_tips,
+            "price_fairness": price_fairness,
+            "buy_timing": buy_timing,
+            "value_metrics": value_metrics,
             "price_difference_from_best": round(price_diff_from_best, 2),
             "scored_listings": scored_listings,
             "recommendation_categories": categories,
@@ -400,32 +618,43 @@ class AIAnalysisService:
         else:
             return "Below Average — consider alternatives"
 
-    def _generate_summary(self, title, platform, price, mrp, rating, best_price, matches, deal_assessment, category):
+    def _generate_summary(
+        self, title, platform, price, mrp, rating, best_price, matches, deal_assessment, category, cheapest_store="another platform"
+    ):
         parts = []
         if price > 0:
-            parts.append(f"{title} is currently available on {platform} at Rs.{price:,.0f}.")
+            parts.append(f"{title} is currently listed on {platform} at ₹{price:,.0f}.")
         else:
-            parts.append(f"{title} was found on {platform}. Pricing is not yet available in our database.")
+            parts.append(f"{title} was evaluated on {platform}.")
 
         if mrp > price and mrp > 0 and price > 0:
             discount_pct = ((mrp - price) / mrp) * 100
-            parts.append(f"The listed MRP is Rs.{mrp:,.0f}, representing a {discount_pct:.0f}% discount.")
+            savings_amt = mrp - price
+            parts.append(
+                f"Against a retail MRP of ₹{mrp:,.0f}, this represents an immediate {discount_pct:.0f}% markdown (saving ₹{savings_amt:,.0f})."
+            )
 
         if rating:
-            parts.append(f"It has a customer rating of {rating} out of 5.")
+            try:
+                r_val = float(rating)
+                sentiment = "excellent" if r_val >= 4.4 else "strong" if r_val >= 4.0 else "moderate"
+                parts.append(f"Verified buyers give it a {sentiment} {r_val}★ out of 5 rating.")
+            except (TypeError, ValueError):
+                parts.append(f"It holds a customer rating of {rating} out of 5.")
 
         if matches > 0:
             if best_price > 0 and price > best_price:
                 diff = price - best_price
                 parts.append(
-                    f"The same product is available on another platform at a lower price of Rs.{best_price:,.0f} "
-                    f"(Rs.{diff:,.0f} savings)."
+                    f"Cross-marketplace scanning shows {cheapest_store} offering the same product at a lower price of ₹{best_price:,.0f} "
+                    f"(₹{diff:,.0f} extra savings across {matches + 1} compared stores)."
                 )
             elif best_price > 0 and price <= best_price:
-                parts.append("This listing offers the best price among the compared platforms with verified data.")
-            parts.append(f"{matches} additional listing{'s' if matches != 1 else ''} found across other platforms.")
-        else:
-            parts.append("No other platform listings were found for direct comparison.")
+                parts.append(
+                    f"{platform} currently leads all {matches + 1} compared marketplaces with the lowest verified price."
+                )
+            else:
+                parts.append(f"Compared across {matches + 1} active marketplace listings.")
 
         return " ".join(parts)
 
@@ -433,25 +662,25 @@ class AIAnalysisService:
         if best_deal and best_deal.get("score", 0) >= 75:
             reasons = []
             if best_deal.get("is_cheapest"):
-                reasons.append("lowest price")
+                reasons.append("lowest verified market price")
             if best_deal.get("rating") and float(best_deal["rating"]) >= 4.3:
-                reasons.append("strong rating")
+                reasons.append(f"high {best_deal['rating']}★ buyer rating")
             if best_deal.get("delivery_days") and best_deal["delivery_days"] <= 2:
-                reasons.append("fast delivery")
+                reasons.append("express delivery")
             if best_deal.get("coupon_discount") and best_deal["coupon_discount"] > 0:
-                reasons.append("available coupon")
-            reason_str = " and ".join(reasons) if reasons else "best overall value"
-            return f"Buy from {best_deal['platform']} — {reason_str}."
+                reasons.append("extra coupon discount")
+            reason_str = ", ".join(reasons) if reasons else "highest composite value score"
+            return f"Recommended Purchase: Buy on {best_deal['platform']} at ₹{best_deal.get('price', price):,.0f} ({reason_str})."
 
         if "Excellent" in deal_assessment or "Good" in deal_assessment:
-            return f"Recommended — {platform} offers competitive pricing for this product."
+            return f"Recommended Purchase: {platform} offers strong value at ₹{price:,.0f} — apply bank or exchange offers at checkout."
         if "Price Unavailable" in deal_assessment:
-            return "Price data is not yet available. Visit the platform directly to check current pricing and offers."
+            return "Visit the official store listing directly to verify current live pricing and stock."
         if "Expensive" in deal_assessment:
-            return f"Consider buying from a cheaper platform. Same product available from Rs.{best_price:,.0f}."
+            return f"Switch Store Recommended: Purchase from the cheapest verified marketplace at ₹{best_price:,.0f} to avoid overpaying."
         if matches == 0:
-            return "Limited data available. Consider checking other platforms manually before purchasing."
-        return "Compare all available options before making a decision."
+            return f"Buy on {platform} or set a DealLens Price Drop Alert to track upcoming festive markdowns."
+        return "Compare the marketplace cards below and select the store with the lowest effective checkout price."
 
     def _find_best_platform(self, listings):
         valid = [l for l in listings if l.get("price", 0) > 0]

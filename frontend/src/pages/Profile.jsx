@@ -57,7 +57,7 @@ const Profile = () => {
       const res = await API.patch("/users/me/", form);
       setProfile(res.data);
       toast.success("Profile preferences saved ✓");
-      localStorage.setItem("shopsmart_user", JSON.stringify(res.data));
+      localStorage.setItem("deallens_user", JSON.stringify(res.data));
       setUser(res.data);
     } catch (err) {
       const data = err.response?.data;
@@ -119,7 +119,7 @@ const Profile = () => {
           flexWrap: "wrap",
           gap: "1.5rem",
           marginBottom: "2rem",
-          background: "linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(11, 15, 25, 0.98))",
+          background: "var(--bg-banner-gradient)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>

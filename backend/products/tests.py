@@ -1,4 +1,4 @@
-"""Comprehensive tests for the ShopSmart products app.
+"""Comprehensive tests for the DealLens products app.
 
 Run with:  python manage.py test products
 """

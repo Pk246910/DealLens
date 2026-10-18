@@ -276,7 +276,7 @@ const Recent = () => {
               lineHeight: 1.5,
             }}
           >
-            Paste any product link from Amazon, Flipkart, or other stores into ShopSmart to start tracking prices and AI deal insights.
+            Paste any product link from Amazon, Flipkart, or other stores into DealLens to start tracking prices and AI deal insights.
           </p>
           <Link
             to="/"
@@ -433,7 +433,8 @@ const Recent = () => {
                             fontSize: "0.72rem",
                             color: "var(--text-muted)",
                             fontWeight: 600,
-                            background: "rgba(255, 255, 255, 0.04)",
+                            background: "var(--bg-subtle-surface)",
+                            border: "1px solid var(--border-subtle)",
                             padding: "0.15rem 0.45rem",
                             borderRadius: "4px",
                           }}
@@ -454,7 +455,7 @@ const Recent = () => {
                     gap: "0.75rem",
                     padding: "0.6rem 0.75rem",
                     borderRadius: "10px",
-                    background: "rgba(255, 255, 255, 0.02)",
+                    background: "var(--bg-subtle-surface)",
                     border: "1px solid var(--border-color)",
                   }}
                 >

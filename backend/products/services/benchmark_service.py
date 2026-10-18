@@ -62,6 +62,34 @@ PLATFORM_PROFILES = {
         "coupon_code": "MEESHO10",
         "search_url": "https://www.meesho.com/search?q={query}",
     },
+    "Nykaa": {
+        "multiplier_range": (-0.02, 0.015),
+        "rating_base": 4.4,
+        "delivery_days": 3,
+        "coupon_code": "NYKAA10",
+        "search_url": "https://www.nykaa.com/search/result/?q={query}",
+    },
+    "JioMart": {
+        "multiplier_range": (-0.03, 0.01),
+        "rating_base": 4.1,
+        "delivery_days": 3,
+        "coupon_code": "JIO50",
+        "search_url": "https://www.jiomart.com/search/{query}",
+    },
+    "Snapdeal": {
+        "multiplier_range": (-0.04, 0.01),
+        "rating_base": 4.0,
+        "delivery_days": 5,
+        "coupon_code": "SNAP100",
+        "search_url": "https://www.snapdeal.com/search?keyword={query}",
+    },
+    "Vijay Sales": {
+        "multiplier_range": (-0.015, 0.02),
+        "rating_base": 4.2,
+        "delivery_days": 3,
+        "coupon_code": "VSDEAL",
+        "search_url": "https://www.vijaysales.com/search/{query}",
+    },
 }
 
 
@@ -90,15 +118,47 @@ def round_to_retail_price(raw_price: float) -> float:
     return max(1.0, float(price))
 
 
-def get_category_platforms(category: str) -> list:
-    """Returns prioritized relevant platform names for a given product category."""
-    cat_lower = (category or "").lower()
-    if any(k in cat_lower for k in ("phone", "smart", "tv", "audio", "laptop", "tablet", "tech", "electronic", "appliance", "gaming", "watch")):
-        return ["Amazon", "Flipkart", "Croma", "Reliance Digital", "Tata CLiQ"]
-    elif any(k in cat_lower for k in ("cloth", "fashion", "wear", "shoe", "beauty", "cosmetic", "dress")):
-        return ["Amazon", "Flipkart", "Myntra", "AJIO", "Tata CLiQ", "Meesho"]
+def get_category_platforms(category: str, title: str = "", source_platform: str = "") -> list:
+    """
+    Returns a selective, realistic subset of 3 to 4 platforms where this specific
+    product and category are actually available (instead of every store).
+    """
+    cat_lower = f"{category or ''} {title or ''}".lower()
+
+    if any(k in cat_lower for k in ("beauty", "cosmetic", "makeup", "skincare", "lipstick", "serum", "shampoo", "perfume", "fragrance")):
+        pool = ["Nykaa", "Amazon", "Flipkart", "Myntra", "Tata CLiQ"]
+    elif any(k in cat_lower for k in ("cloth", "fashion", "wear", "shoe", "sneaker", "dress", "shirt", "jeans", "kurta", "jacket", "t-shirt", "polo", "apparel", "sandal", "boot", "backpack")):
+        pool = ["Myntra", "AJIO", "Amazon", "Flipkart", "Tata CLiQ", "Meesho"]
+    elif any(k in cat_lower for k in ("mixer", "grinder", "fryer", "kettle", "refrigerator", "purifier", "washing", "fridge", "aquaguard", "kitchen", "appliance")):
+        pool = ["Amazon", "Flipkart", "Croma", "Reliance Digital", "Tata CLiQ"]
+    elif any(k in cat_lower for k in ("phone", "smart", "tv", "audio", "laptop", "tablet", "tech", "electronic", "gaming", "watch", "earbud", "headphone", "airpods", "macbook", "iphone", "galaxy", "camera", "speaker")):
+        pool = ["Amazon", "Flipkart", "Croma", "Reliance Digital", "Tata CLiQ"]
     else:
-        return ["Amazon", "Flipkart", "Croma", "Reliance Digital", "Tata CLiQ"]
+        pool = ["Amazon", "Flipkart", "Croma", "Reliance Digital", "Tata CLiQ"]
+
+    seed_str = (title or category or "Product").strip().lower()
+    seed = sum(ord(c) * (i + 1) for i, c in enumerate(seed_str))
+    # Deterministically select 3 or 4 platforms per product
+    target_count = 3 if (seed % 2 == 0) else 4
+
+    selected = []
+    if source_platform:
+        # Match canonical casing if in pool
+        matched_src = next((p for p in pool if p.lower() == source_platform.lower()), source_platform)
+        selected.append(matched_src)
+
+    # Rotate through the category pool starting at a product-specific offset
+    n_pool = len(pool)
+    start_idx = seed % n_pool
+    step = 2 if (seed % 3 == 0 and n_pool > 4) else 1
+    for i in range(n_pool):
+        candidate = pool[(start_idx + i * step) % n_pool]
+        if all(candidate.lower() != s.lower() for s in selected):
+            selected.append(candidate)
+        if len(selected) >= target_count:
+            break
+
+    return selected
 
 
 def generate_platform_price(base_price: float, platform: str, title: str) -> float:
@@ -127,15 +187,12 @@ def generate_benchmark_listings(
 ) -> list:
     """
     Generates realistic comparison listings and 31-point price history trends
-    for all relevant platforms, tightly centered on base_price.
+    for the 3-4 selective platforms where this product is available.
     """
     if base_price <= 0:
         return []
 
-    platforms = get_category_platforms(category)
-    # Ensure source_platform is included
-    if source_platform and source_platform not in platforms:
-        platforms = [source_platform] + platforms
+    platforms = get_category_platforms(category, title=title, source_platform=source_platform)
 
     if not base_mrp or base_mrp <= base_price:
         base_mrp = round_to_retail_price(base_price * 1.18)
@@ -209,8 +266,7 @@ def generate_benchmark_listings(
 def ensure_product_price_history(product: Product, base_price: float = None, source_platform: str = None):
     """
     Populates 30 days of realistic multi-store price history and ProductOffers
-    for this product if history is missing or sparse (< 10 records).
-    Prices are strictly proportional to the product's actual price.
+    for the 3-4 selective platforms where this product is available.
     """
     if not product:
         return
@@ -227,13 +283,17 @@ def ensure_product_price_history(product: Product, base_price: float = None, sou
     if not base_price or base_price <= 0:
         return
 
-    existing_count = PriceHistory.objects.filter(product=product).count()
-    should_seed_history = existing_count < 15
-
-    platforms = get_category_platforms(product.category)
     source_platform = source_platform or (product.offers.first().store_name if product.offers.exists() else "Amazon")
-    if source_platform not in platforms:
-        platforms = [source_platform] + platforms
+    platforms = get_category_platforms(product.category, title=product.title, source_platform=source_platform)
+
+    # Also include any existing valid non-benchmark offers on this product (up to 4 stores total)
+    for existing_store in product.offers.filter(current_price__gt=0).exclude(data_source="benchmark").values_list("store_name", flat=True):
+        if existing_store and all(existing_store.lower() != p.lower() for p in platforms) and len(platforms) < 4:
+            platforms.append(existing_store)
+
+    # Remove any excess benchmark offers/history on platforms outside the selective stores
+    product.offers.filter(data_source="benchmark").exclude(store_name__in=platforms).delete()
+    PriceHistory.objects.filter(product=product, collection_method="benchmark").exclude(store_name__in=platforms).delete()
 
     now = timezone.now()
     records_to_create = []
@@ -241,55 +301,83 @@ def ensure_product_price_history(product: Product, base_price: float = None, sou
 
     for platform in platforms:
         is_src = (platform.lower() == source_platform.lower())
-        p_current = base_price if is_src else generate_platform_price(base_price, platform, product.title)
+        existing_offer = product.offers.filter(store_name=platform, current_price__gt=0).first()
+        if existing_offer and not is_src:
+            p_current = float(existing_offer.current_price)
+        else:
+            p_current = base_price if is_src else generate_platform_price(base_price, platform, product.title)
+
         profile = PLATFORM_PROFILES.get(platform, PLATFORM_PROFILES["Amazon"])
 
-        # Ensure ProductOffer exists if missing
-        if not product.offers.filter(store_name=platform).exists():
+        # Ensure ProductOffer exists with a valid price
+        if not existing_offer:
             search_template = profile.get("search_url", "https://www.google.com/search?q={query}")
             clean_query = quote_plus((product.title or "product")[:60].strip())
             store_url = search_template.format(query=clean_query)
             mrp_val = round_to_retail_price(p_current * 1.18)
 
-            ProductOffer.objects.create(
+            ProductOffer.objects.update_or_create(
                 product=product,
                 store_name=platform,
-                current_price=Decimal(str(p_current)),
-                original_price=Decimal(str(mrp_val)),
-                product_url=store_url,
-                rating=Decimal(str(profile.get("rating_base", 4.3))),
-                reviews_count=120 + ((seed_base + sum(ord(c) for c in platform)) % 600),
-                in_stock=True,
-                data_source="benchmark" if not is_src else "live",
-                delivery_days=profile.get("delivery_days", 3),
-                delivery_time=f"{profile.get('delivery_days', 3)} days",
-                coupon_code=profile.get("coupon_code"),
-                coupon_discount=Decimal("500") if p_current > 10000 else Decimal("0"),
+                defaults={
+                    "current_price": Decimal(str(p_current)),
+                    "original_price": Decimal(str(mrp_val)),
+                    "product_url": store_url,
+                    "rating": Decimal(str(profile.get("rating_base", 4.3))),
+                    "reviews_count": 120 + ((seed_base + sum(ord(c) for c in platform)) % 600),
+                    "in_stock": True,
+                    "data_source": "benchmark" if not is_src else "live",
+                    "delivery_days": profile.get("delivery_days", 3),
+                    "delivery_time": f"{profile.get('delivery_days', 3)} days",
+                    "coupon_code": profile.get("coupon_code"),
+                    "coupon_discount": Decimal("500") if p_current > 10000 else Decimal("0"),
+                },
             )
 
-        if not should_seed_history:
+        store_hist_qs = PriceHistory.objects.filter(product=product, store_name=platform)
+        if store_hist_qs.filter(price__gt=p_current * 1.10).exists() or store_hist_qs.filter(price__lt=p_current * 0.90).exists():
+            store_hist_qs.delete()
+            store_hist_qs = PriceHistory.objects.filter(product=product, store_name=platform)
+
+        store_hist_count = store_hist_qs.count()
+
+        if store_hist_count >= 8:
+            latest_rec = store_hist_qs.order_by("-recorded_at").first()
+            if latest_rec and abs(float(latest_rec.price) - p_current) > 1.0:
+                records_to_create.append(
+                    PriceHistory(
+                        product=product,
+                        store_name=platform,
+                        price=Decimal(str(p_current)),
+                        currency="INR",
+                        collection_method="benchmark" if not is_src else "live",
+                        data_status="demonstration",
+                        recorded_at=now,
+                    )
+                )
             continue
 
-        # Day 0 (today)
-        records_to_create.append(
-            PriceHistory(
-                product=product,
-                store_name=platform,
-                price=Decimal(str(p_current)),
-                currency="INR",
-                collection_method="benchmark" if not is_src else "live",
-                data_status="demonstration",
-                recorded_at=now,
+        if store_hist_count == 0:
+            # Day 0 (today)
+            records_to_create.append(
+                PriceHistory(
+                    product=product,
+                    store_name=platform,
+                    price=Decimal(str(p_current)),
+                    currency="INR",
+                    collection_method="benchmark" if not is_src else "live",
+                    data_status="demonstration",
+                    recorded_at=now,
+                )
             )
-        )
 
-        # 7 historical points across past 30 days
+        # 12 historical points across past 30 days for a smooth continuous curve
         p_seed = sum(ord(c) for c in platform)
-        day_points = [3, 7, 12, 17, 21, 26, 30]
+        day_points = [2, 4, 6, 9, 12, 15, 18, 21, 24, 27, 30]
         for days_ago in day_points:
             cycle = math.sin((days_ago * 0.5) + (p_seed % 7))
             noise = (((seed_base * days_ago) % 11) - 5) * 0.002
-            hist_p = round_to_retail_price(p_current * (1.0 + cycle * 0.035 + noise))
+            hist_p = round_to_retail_price(p_current * (1.0 + cycle * 0.032 + noise))
             past_dt = now - datetime.timedelta(days=days_ago, hours=(p_seed % 10))
             records_to_create.append(
                 PriceHistory(
@@ -508,7 +596,7 @@ def resolve_product_image(title: str = "", brand: str = "", category: str = "", 
             if not os.path.exists(svg_path):
                 theme_key = _map_svg_category(category, clean_title)
                 color, badge_label, icon_svg = CATEGORY_SVG_THEMES.get(theme_key, CATEGORY_SVG_THEMES["Smartphones"])
-                brand_text = escape(((brand if brand and brand.lower() != "unknown" else (clean_title.split()[0] if clean_title else "SHOPSMART"))).upper()[:18])
+                brand_text = escape(((brand if brand and brand.lower() != "unknown" else (clean_title.split()[0] if clean_title else "DEALLENS"))).upper()[:18])
                 short_title = escape(" ".join(clean_title.split()[:4])[:28] or "Analyzed Product")
                 svg_id = re.sub(r"[^A-Za-z0-9]", "_", theme_key)
                 svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 350" width="400" height="350">
@@ -534,7 +622,7 @@ def resolve_product_image(title: str = "", brand: str = "", category: str = "", 
   <text x="200" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#94a3b8" opacity="0.8">{short_title}</text>
   <rect x="140" y="318" width="120" height="20" rx="10" fill="{color}" opacity="0.1"/>
   <text x="200" y="332" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="9" font-weight="600" fill="{color}" opacity="0.7">{badge_label}</text>
-  <text x="200" y="22" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="400" fill="#475569" opacity="0.4">SHOPSMART</text>
+  <text x="200" y="22" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="400" fill="#475569" opacity="0.4">DEALLENS</text>
 </svg>'''
                 with open(svg_path, "w", encoding="utf-8") as fh:
                     fh.write(svg_content)
@@ -560,4 +648,97 @@ def estimate_fallback_price(title: str = "", brand: str = "", category: str = ""
     seed = sum(ord(c) for c in (title or "Product"))
     variation = 1.0 + (((seed % 21) - 10) * 0.015)
     return round_to_retail_price(base * variation)
+
+
+def filter_comparison_to_selective_platforms(
+    comparison: dict,
+    category: str = "",
+    title: str = "",
+    source_platform: str = "",
+) -> dict:
+    """
+    Filters a ComparisonEngine result so only the 3-4 realistic platforms for this
+    product/category remain active, while all other checked marketplaces are marked
+    unavailable.
+    """
+    if not isinstance(comparison, dict):
+        return comparison
+
+    from .comparison_engine import ALL_PLATFORMS, _unavailable_listing
+
+    allowed = get_category_platforms(category, title=title, source_platform=source_platform)
+    allowed_lower = {p.lower() for p in allowed}
+
+    raw_listings = comparison.get("listings") or []
+    valid_raw = [
+        dict(l)
+        for l in raw_listings
+        if l.get("data_source") != "unavailable" and (l.get("price") or 0) > 0
+    ]
+
+    # Always preserve real verified/live listings up to 4 platforms
+    verified_listings = [
+        l for l in valid_raw
+        if l.get("data_source") in ("live", "verified") or l.get("is_source")
+    ]
+    if len(verified_listings) >= 3:
+        active_listings = verified_listings[:4]
+    else:
+        seen_plats = {(l.get("platform") or "").lower() for l in verified_listings}
+        active_listings = list(verified_listings)
+        for l in valid_raw:
+            plat_l = (l.get("platform") or "").lower()
+            if plat_l not in seen_plats and plat_l in allowed_lower and len(active_listings) < 4:
+                seen_plats.add(plat_l)
+                active_listings.append(l)
+
+    if not active_listings:
+        active_listings = valid_raw[:4]
+
+    active_listings.sort(key=lambda x: x["price"] if x.get("price") and x["price"] > 0 else float("inf"))
+    prices = [l["price"] for l in active_listings if l.get("price") and l["price"] > 0]
+    best_price = min(prices) if prices else 0
+    highest_price = max(prices) if prices else 0
+
+    rated = [l for l in active_listings if l.get("rating") is not None]
+    best_rating_val = max((r["rating"] for r in rated), default=None)
+    best_rating_listing = max(rated, key=lambda x: x["rating"]) if rated else None
+
+    deliverable = [l for l in active_listings if l.get("delivery_days") and l["delivery_days"] > 0]
+    fastest_days = min((d["delivery_days"] for d in deliverable), default=None)
+    fastest_delivery = min(deliverable, key=lambda x: x["delivery_days"]) if deliverable else None
+
+    for l in active_listings:
+        l["is_cheapest"] = (l.get("price") == best_price and best_price > 0)
+        l["savings_vs_this"] = round(l["price"] - best_price, 2) if (best_price > 0 and l.get("price", 0) > 0) else 0
+        l["is_best_rated"] = (best_rating_val is not None and l.get("rating") == best_rating_val)
+        l["fastest_delivery"] = (fastest_days is not None and l.get("delivery_days") == fastest_days)
+
+    present = {l.get("platform") for l in active_listings if l.get("platform")}
+    all_listings = list(active_listings)
+    unavailable_platforms = []
+    for name in ALL_PLATFORMS:
+        if name not in present:
+            all_listings.append(_unavailable_listing(name))
+            unavailable_platforms.append(name)
+
+    return {
+        **comparison,
+        "matches_found": max(0, len(active_listings) - 1),
+        "listings": all_listings,
+        "available_platforms": [l.get("platform") for l in active_listings if l.get("platform")],
+        "unavailable_platforms": unavailable_platforms,
+        "best_price": best_price,
+        "highest_price": highest_price,
+        "price_range": round(highest_price - best_price, 2) if highest_price > best_price else 0,
+        "best_rating": {
+            "platform": best_rating_listing["platform"],
+            "rating": best_rating_listing["rating"],
+        } if best_rating_listing else None,
+        "fastest_delivery": {
+            "platform": fastest_delivery["platform"],
+            "days": fastest_delivery["delivery_days"],
+        } if fastest_delivery else None,
+    }
+
 

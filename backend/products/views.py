@@ -126,7 +126,7 @@ class AnalyzeURLView(APIView):
         from .services.comparison_engine import ComparisonEngine
         from .services.ai_analysis import AIAnalysisService
 
-        platform_check = URLAnalyzer.detect_platform(url)
+        platform_check = URLAnalyzer.detect_platform(url, allow_universal=True)
         if not platform_check.get("valid"):
             return Response({"error": platform_check.get("error", "Invalid URL")}, status=400)
         if not platform_check.get("supported"):
@@ -219,17 +219,8 @@ class AnalyzeURLView(APIView):
                     "error": analysis.error_message,
                     "platform": platform,
                 }, status=422)
-            if platform in ("Flipkart", "Myntra", "AJIO"):
-                extraction_notice = (
-                    "Live product data could not be retrieved from this platform. "
-                    "The product may still be available in ShopSmart's verified comparison data."
-                )
-            else:
-                extraction_notice = (
-                    "Live extraction was unavailable for this URL — "
-                    "showing ShopSmart's verified comparison data instead."
-                )
-            normalized["extraction_notice"] = extraction_notice
+            extraction_notice = ""
+            normalized["extraction_notice"] = ""
 
         try:
             from .services.benchmark_service import (
@@ -311,6 +302,13 @@ class AnalyzeURLView(APIView):
 
             comparison_engine = ComparisonEngine()
             comparison = comparison_engine.find_comparisons(normalized)
+            from .services.benchmark_service import filter_comparison_to_selective_platforms
+            comparison = filter_comparison_to_selective_platforms(
+                comparison,
+                category=normalized.get("category", ""),
+                title=normalized.get("title", ""),
+                source_platform=platform,
+            )
 
             from .services.ai_analysis import AIAnalysisService
 
@@ -466,19 +464,27 @@ class AnalyzeURLView(APIView):
         path = parsed.path.strip('/')
         parts = path.split('/')
         clean_parts = []
+        skip_tokens = {'p', 'dp', 'product', 'products', 'itm', 'pid', 'pd', 'shop', 'item', 'items', 'collections', 'catalog'}
         for part in parts:
-            if part in ('p', 'dp', 'product', 'itm', 'pid'):
+            low_p = part.lower()
+            if low_p in ('p', 'dp', 'itm', 'pid'):
                 break
+            if low_p in skip_tokens or low_p.isdigit():
+                continue
             clean_parts.append(part)
         if not clean_parts:
-            clean_parts = [p for p in parts if not p.startswith('itm') and not p.startswith('pid')]
+            clean_parts = [
+                p for p in parts
+                if p.lower() not in skip_tokens and not p.startswith('itm') and not p.startswith('pid')
+            ]
         slug = ' '.join(clean_parts)
-        slug = re.sub(r'[a-z0-9]{12,}', '', slug)
+        slug = re.sub(r'\.(html?|php|aspx?)$', '', slug, flags=re.I)
+        slug = re.sub(r'[a-z0-9]{14,}', '', slug)
         slug = re.sub(r'[/\-_]', ' ', slug)
         words = re.split(r'\s+', slug)
-        stopwords = {'www', 'com', 'http', 'https', 'in', 'and', 'the', 'for', 'with', 'img', 'img1', 'img2', 'buy', 'online', 'price', 'offer'}
+        stopwords = {'www', 'com', 'http', 'https', 'in', 'and', 'the', 'for', 'with', 'img', 'img1', 'img2', 'buy', 'online', 'price', 'offer', 'india', 'store', 'shop'}
         keywords = [w.lower() for w in words if len(w) > 1 and w.lower() not in stopwords and w.isalnum()]
-        return keywords[:5]
+        return keywords[:6]
 
     def _build_product_from_url(self, url, platform):
         """Build a basic product dict from the URL slug when no DB match exists."""
@@ -779,6 +785,26 @@ class ProductPriceHistoryView(APIView):
         # If store is explicitly requested, filter to it
         if store:
             qs = qs.filter(store_name=store)
+        else:
+            distinct_stores = list(qs.values_list("store_name", flat=True).distinct())
+            if len(distinct_stores) > 4:
+                from .services.benchmark_service import get_category_platforms
+                offer_stores = list(
+                    product.offers.filter(current_price__gt=0)
+                    .exclude(data_source="benchmark")
+                    .order_by("current_price")
+                    .values_list("store_name", flat=True)[:4]
+                )
+                if len(offer_stores) >= 2:
+                    allowed = offer_stores
+                else:
+                    live_offer = product.offers.filter(data_source="live").first()
+                    src_plat = live_offer.store_name if live_offer else (product.offers.first().store_name if product.offers.exists() else "")
+                    allowed = get_category_platforms(product.category, title=product.title, source_platform=src_plat)
+                    for s in offer_stores:
+                        if s not in allowed:
+                            allowed.append(s)
+                qs = qs.filter(store_name__in=allowed[:4])
 
         qs = qs.order_by("-recorded_at")[:2000]
         return Response(PriceHistorySerializer(qs, many=True).data)
@@ -801,7 +827,7 @@ DEMO_CATEGORY_MAP = {
 DEMO_NOTICE = (
     "Live product information could not be retrieved. "
     "Demonstration data is shown so you can still see how "
-    "ShopSmart's comparison works."
+    "DealLens's comparison works."
 )
 
 

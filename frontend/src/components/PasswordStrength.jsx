@@ -57,7 +57,7 @@ const PasswordStrength = ({ password }) => {
         style={{
           width: "100%",
           height: 4,
-          background: "rgba(255, 255, 255, 0.08)",
+          background: "var(--border-color)",
           borderRadius: 999,
           overflow: "hidden",
         }}
@@ -83,9 +83,9 @@ const PasswordStrength = ({ password }) => {
               fontWeight: 600,
               padding: "0.2rem 0.5rem",
               borderRadius: "6px",
-              background: c.met ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.03)",
+              background: c.met ? "rgba(16, 185, 129, 0.1)" : "var(--bg-subtle-surface)",
               color: c.met ? "var(--accent-emerald)" : "var(--text-muted)",
-              border: `1px solid ${c.met ? "rgba(16, 185, 129, 0.3)" : "rgba(255, 255, 255, 0.06)"}`,
+              border: `1px solid ${c.met ? "rgba(16, 185, 129, 0.3)" : "var(--border-subtle)"}`,
               display: "inline-flex",
               alignItems: "center",
               gap: "0.25rem",

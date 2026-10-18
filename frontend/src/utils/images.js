@@ -90,7 +90,7 @@ function inferThemeKey(category = "", title = "") {
 
 export function buildDynamicProductSvg(meta = {}) {
   const obj = typeof meta === "string" ? { title: meta } : meta || {};
-  const rawTitle = String(obj.title || "ShopSmart Product").trim();
+  const rawTitle = String(obj.title || "DealLens Product").trim();
   const rawBrand = String(obj.brand || "").trim();
   const rawCategory = String(obj.category || "").trim();
 
@@ -100,7 +100,7 @@ export function buildDynamicProductSvg(meta = {}) {
   const brandLabel = escapeXml(
     (rawBrand && rawBrand.toLowerCase() !== "unknown"
       ? rawBrand
-      : rawTitle.split(/\s+/)[0] || "SHOPSMART"
+      : rawTitle.split(/\s+/)[0] || "DEALLENS"
     )
       .toUpperCase()
       .slice(0, 18)
@@ -111,7 +111,7 @@ export function buildDynamicProductSvg(meta = {}) {
       .split(/\s+/)
       .slice(0, 4)
       .join(" ")
-      .slice(0, 28) || "ShopSmart Product"
+      .slice(0, 28) || "DealLens Product"
   );
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 350" width="400" height="350">
@@ -132,7 +132,7 @@ export function buildDynamicProductSvg(meta = {}) {
   <text x="200" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#94a3b8" opacity="0.8">${shortTitle}</text>
   <rect x="140" y="318" width="120" height="20" rx="10" fill="${theme.color}" opacity="0.1"/>
   <text x="200" y="332" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="9" font-weight="600" fill="${theme.color}" opacity="0.7">${theme.badge}</text>
-  <text x="200" y="22" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="400" fill="#475569" opacity="0.4">SHOPSMART</text>
+  <text x="200" y="22" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="400" fill="#475569" opacity="0.4">DEALLENS</text>
 </svg>`;
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -154,7 +154,7 @@ export function handleImageError(e) {
   if (!e || !e.target) return;
   if (e.target.dataset.fallback === "done") return;
   e.target.dataset.fallback = "done";
-  const title = e.target.alt || e.target.dataset.title || "ShopSmart Product";
+  const title = e.target.alt || e.target.dataset.title || "DealLens Product";
   const brand = e.target.dataset.brand || "";
   const category = e.target.dataset.category || "";
   e.target.src = buildDynamicProductSvg({ title, brand, category });

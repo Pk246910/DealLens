@@ -142,9 +142,9 @@ const AnalysisPage = () => {
         analysis.analysis_result?.product?.title ||
         analysis.product?.title ||
         "Product Decision Analysis";
-      document.title = `${title} — ShopSmart`;
+      document.title = `${title} — DealLens`;
       return () => {
-        document.title = "ShopSmart — AI-Powered Product Comparison";
+        document.title = "DealLens — AI-Powered Multi-Marketplace Price Comparison";
       };
     }
   }, [analysis]);

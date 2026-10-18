@@ -1,6 +1,6 @@
-# ⚡ ShopSmart Frontend (React 19 + Vite 8)
+# 🔍 DealLens Frontend (React 19 + Vite 8)
 
-The client application for **ShopSmart**, built with **React 19**, **Vite 8**, **React Router 7**, and **Recharts**.
+The client application for **DealLens**, built with **React 19**, **Vite 8**, **React Router 7**, and **Recharts**.
 
 ---
 
@@ -21,38 +21,44 @@ The client application for **ShopSmart**, built with **React 19**, **Vite 8**, *
 ```text
 frontend/src/
 ├── api/
-│   └── axios.js               # Central Axios client with JWT bearer & refresh interceptors
+│   └── axios.js                     # Central Axios client with JWT bearer & refresh interceptors
 ├── components/
-│   ├── Navbar.jsx             # Responsive navigation bar with mobile drawer & theme switcher
-│   ├── Footer.jsx             # Application footer & system links
-│   ├── PlatformBadge.jsx      # Marketplace badges (Amazon, Flipkart, Tata CLiQ, Meesho, etc.)
-│   ├── AnalysisResult.jsx     # AI deal score summary card with quick metrics
-│   ├── ErrorBoundary.jsx      # Global React error boundary component
-│   └── ProtectedRoute.jsx     # User & Admin route guards (AdminProtectedRoute)
+│   ├── BrandLogo.jsx                # Custom Cart-Inside-Lens SVG emblem & wordmark
+│   ├── MarketplaceComparisonCards.jsx # Interactive store comparison cards & detail inspection drawer
+│   ├── AnalysisResult.jsx           # AI deal score summary card with quick metrics & decision factors
+│   ├── PriceHistoryChart.jsx        # 30-day multi-store price movement line chart with tooltips
+│   ├── PlatformBadge.jsx            # Marketplace badges (Amazon, Flipkart, Tata CLiQ, Meesho, etc.)
+│   ├── Navbar.jsx                   # Responsive navigation bar with mobile drawer & theme switcher
+│   ├── Footer.jsx                   # Application footer & system links
+│   ├── PasswordStrength.jsx         # Visual password strength meter & requirements checklist
+│   ├── ShareButton.jsx              # Deal share sheet with clipboard & native share
+│   ├── UrlAnalyzer.jsx              # Universal input bar with animated analysis progress stepper
+│   ├── ErrorBoundary.jsx            # Global React error boundary component
+│   └── ProtectedRoute.jsx           # User & Admin route guards (AdminProtectedRoute)
 ├── context/
-│   ├── AuthContext.jsx        # User authentication, token lifecycle, and role state
-│   └── ThemeContext.jsx       # Dark / Light theme provider with persistent storage
+│   ├── AuthContext.jsx              # User authentication, token lifecycle, and role state
+│   └── ThemeContext.jsx             # Dark / Light theme provider with persistent storage
 ├── pages/
-│   ├── Home.jsx               # Hero analyzer, recent items feed, benefits section
-│   ├── AnalysisPage.jsx       # In-depth URL scraping deal breakdown & alternative offers
-│   ├── DecisionReport.jsx     # Multi-store decision matrix, radar analysis & price curves
-│   ├── Recent.jsx             # 3-column responsive history feed & tab filtering
-│   ├── ProductDetail.jsx      # Product specifications, price history, reviews & offers
-│   ├── Wishlist.jsx           # Guest session + authenticated user saved watchlist
-│   ├── Alerts.jsx             # Target price threshold alerts manager
-│   ├── Login.jsx              # Shopper login with glassmorphism eCommerce background
-│   ├── Register.jsx           # Shopper account registration
-│   ├── Profile.jsx            # Account details & security password change
-│   ├── AdminLogin.jsx         # Isolated Admin Portal authentication
-│   ├── Admin.jsx              # Admin Dashboard (Live Telemetry Log, User Roles, Products)
-│   ├── ForgotPassword.jsx     # Email tokenized password recovery flow
-│   └── NotFound.jsx           # Custom 404 page
+│   ├── Home.jsx                     # Hero analyzer, recent items feed, benefits section
+│   ├── AnalysisPage.jsx             # In-depth URL scraping deal breakdown & alternative offers
+│   ├── DecisionReport.jsx           # Multi-store decision matrix, radar analysis & price curves
+│   ├── Recent.jsx                   # 3-column responsive history feed & tab filtering
+│   ├── ProductDetail.jsx            # Specifications, price history, reviews & offers
+│   ├── Wishlist.jsx                 # Guest session + authenticated user saved watchlist
+│   ├── Alerts.jsx                   # Target price threshold alerts manager
+│   ├── Login.jsx                    # Shopper login with glassmorphism eCommerce background
+│   ├── Register.jsx                 # Shopper account registration
+│   ├── Profile.jsx                  # Account details & security password change
+│   ├── AdminLogin.jsx               # Isolated Admin Portal authentication
+│   ├── Admin.jsx                    # Admin Dashboard (Telemetry, Monthly Reports, Users, Products)
+│   ├── ForgotPassword.jsx           # Email tokenized password recovery flow
+│   └── NotFound.jsx                 # Custom 404 page
 ├── utils/
-│   ├── images.js              # Fallback product images & broken link handlers
-│   └── platforms.js           # Platform theme colors & brand mappings
-├── App.jsx                    # Root router with global Toast container
-├── App.css                    # Unified design tokens, CSS variables, and responsive layout
-└── main.jsx                   # React 19 root bootstrap
+│   ├── images.js                    # Fallback product images & broken link handlers
+│   └── platforms.js                 # Platform theme colors & official merchant domain mappings
+├── App.jsx                          # Root router with global Toast container & route animations
+├── App.css                          # Unified design tokens, full-frontend animations & CSS variables
+└── main.jsx                         # React 19 root bootstrap
 ```
 
 ---
@@ -97,8 +103,9 @@ VITE_API_URL=http://127.0.0.1:8000/api
 
 ---
 
-## 🎨 Design System & Theming
+## 🎨 Design System, Motion & Theming
 
 - **Theme Switching:** Dark mode (`dark`) and light mode (`light`) toggled globally through `ThemeContext`.
-- **CSS Variables:** Colors, borders, surfaces, and shadows are defined dynamically via CSS custom properties in `src/App.css`.
-- **WCAG High Contrast:** Ensures prices, discounts, radar charts, and decision matrices are completely legible in both light and dark backgrounds.
+- **CSS Surface Tokens:** Semantic CSS custom properties (`--bg-surface`, `--bg-subtle-surface`, `--bg-banner-gradient`, `--bg-detail-gradient`, `--shadow-card-hover`) defined in `src/App.css`.
+- **WCAG High Contrast:** Ensures prices, discounts, radar charts, comparison cards, and decision matrices are completely legible in both light and dark backgrounds.
+- **Motion System:** Route-level page entrances (`dlPageEnter`), staggered card cascades, card sheen hover states, and smooth drawer expands.

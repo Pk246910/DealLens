@@ -11,5 +11,5 @@
   <line x1="175" y1="160" x2="225" y2="160" stroke="#06b6d4" stroke-width="1.5" opacity="0.2"/>
   <circle cx="200" cy="190" r="8" fill="#06b6d4" opacity="0.2"/>
   <text x="200" y="290" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#64748b" opacity="0.6">No Image Available</text>
-  <text x="200" y="22" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="400" fill="#475569" opacity="0.4">SHOPSMART</text>
+  <text x="200" y="22" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="400" fill="#475569" opacity="0.4">DEALLENS</text>
 </svg>

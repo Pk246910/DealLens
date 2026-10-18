@@ -762,3 +762,72 @@ class CouponValidityTests(TestCase):
         rows = [l for l in out["listings"] if l.get("source_url") == offer.product_url]
         self.assertEqual(len(rows), 1)
         self.assertTrue(rows[0]["coupon_valid"])
+
+
+class UniversalAndSelectiveAvailabilityTests(TestCase):
+    def test_universal_platform_detection(self):
+        from products.services.url_analyzer import URLAnalyzer
+
+        nykaa = URLAnalyzer.detect_platform("https://www.nykaa.com/lakme-lipstick/p/12345", allow_universal=True)
+        self.assertTrue(nykaa["supported"])
+        self.assertEqual(nykaa["platform"], "Nykaa")
+
+        universal = URLAnalyzer.detect_platform("https://www.bewakoof.com/p/classic-cotton-tshirt", allow_universal=True)
+        self.assertTrue(universal["supported"])
+        self.assertEqual(universal["platform"], "Bewakoof")
+        self.assertTrue(universal["is_universal"])
+
+        # Reserved dummy domains remain rejected
+        dummy = URLAnalyzer.detect_platform("https://example.com/product/123", allow_universal=True)
+        self.assertFalse(dummy["supported"])
+
+    def test_universal_extractor_nextjs_state(self):
+        from products.services.extract.pipeline import extract_product
+
+        next_html = """
+        <html><head>
+        <meta property="og:image" content="https://cdn.store.in/product1.jpg" />
+        </head><body>
+        <script id="__NEXT_DATA__" type="application/json">
+        {"props":{"pageProps":{"product":{"productName":"boAt Airdopes 141 ANC TWS","sellingPrice":1299,"mrp":4490,"brandName":"boAt","averageRating":4.3}}}}
+        </script>
+        </body></html>
+        """
+        with patch(FETCH, return_value=next_html):
+            res = extract_product("https://www.boat-lifestyle.com/products/airdopes-141", platform="boAt", refresh=True)
+        self.assertTrue(res.success)
+        self.assertEqual(res.product_name, "boAt Airdopes 141 ANC TWS")
+        self.assertEqual(res.price, 1299.0)
+        self.assertEqual(res.image_url, "https://cdn.store.in/product1.jpg")
+
+    def test_selective_platform_availability_count_and_category(self):
+        from products.services.benchmark_service import (
+            filter_comparison_to_selective_platforms,
+            get_category_platforms,
+        )
+
+        phone_stores = get_category_platforms("Smartphones", title="Samsung Galaxy S24 Ultra 5G", source_platform="Amazon")
+        self.assertIn(len(phone_stores), (3, 4))
+        self.assertIn("Amazon", phone_stores)
+        for fashion_only in ("Myntra", "AJIO", "Meesho"):
+            self.assertNotIn(fashion_only, phone_stores)
+
+        fashion_stores = get_category_platforms("Fashion", title="Men Slim Fit Cotton Casual Shirt", source_platform="Myntra")
+        self.assertIn(len(fashion_stores), (3, 4))
+        self.assertIn("Myntra", fashion_stores)
+        for tech_only in ("Croma", "Reliance Digital"):
+            self.assertNotIn(tech_only, fashion_stores)
+
+        raw_comparison = {
+            "listings": [
+                {"platform": p, "price": 50000 + i * 500, "mrp": 60000, "rating": 4.3, "delivery_days": 3, "data_source": "benchmark"}
+                for i, p in enumerate(["Amazon", "Flipkart", "Croma", "Reliance Digital", "Tata CLiQ", "Myntra", "AJIO", "Meesho"])
+            ]
+        }
+        filtered = filter_comparison_to_selective_platforms(
+            raw_comparison, category="Smartphones", title="Samsung Galaxy S24 Ultra 5G", source_platform="Amazon"
+        )
+        active = [l for l in filtered["listings"] if l.get("data_source") != "unavailable"]
+        self.assertIn(len(active), (3, 4))
+        self.assertTrue(len(filtered["unavailable_platforms"]) >= 4)
+

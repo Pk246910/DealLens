@@ -107,7 +107,7 @@ const Home = () => {
             animation: "fadeInDown 0.5s 0.2s ease both",
           }}
         >
-          Paste any product URL from Amazon, Flipkart, Croma, Myntra & more. ShopSmart cross-scrapes alternative stores, analyzes prices & ratings, and computes an explainable <strong>Best Deal Score</strong> before you buy.
+          Paste a product URL from <strong>any online store</strong> — Amazon, Flipkart, Myntra, Nykaa, Croma, JioMart, or brand websites. DealLens detects where that product is actually sold, compares prices & ratings, and computes an explainable <strong>Best Deal Score</strong>.
         </p>
 
         {/* Feature Value Pills */}
@@ -125,15 +125,15 @@ const Home = () => {
           }}
         >
           <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-            <Zap size={14} color="var(--accent-cyan)" /> Live Marketplace Extraction
+            <Zap size={14} color="var(--accent-cyan)" /> Universal Multi-Store URL Analyzer
           </span>
           <span>•</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-            <BarChart3 size={14} color="var(--accent-green)" /> 8-Dimension Deal Scoring
+            <BarChart3 size={14} color="var(--accent-green)" /> Realistic Store Availability Check
           </span>
           <span>•</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-            <ShieldCheck size={14} color="var(--accent-purple)" /> 100% Unbiased Recommendations
+            <ShieldCheck size={14} color="var(--accent-purple)" /> 8-Dimension AI Deal Scoring
           </span>
         </div>
       </section>
@@ -172,7 +172,7 @@ const Home = () => {
             Running Cross-Platform Intelligence
           </div>
           <div style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
-            Scraping live prices, parsing seller metadata, and calculating Best Deal Score...
+            Extracting product metadata, checking store availability, and calculating Best Deal Score...
           </div>
         </div>
       )}
@@ -193,7 +193,7 @@ const Home = () => {
               <div style={{ fontSize: "0.8rem", color: "var(--accent-cyan)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.35rem" }}>
                 Decision Pipeline
               </div>
-              <h2 style={{ fontSize: "1.6rem", fontWeight: 800 }}>How ShopSmart Works</h2>
+              <h2 style={{ fontSize: "1.6rem", fontWeight: 800 }}>How DealLens Works</h2>
             </div>
 
             <div
@@ -207,18 +207,22 @@ const Home = () => {
                 {
                   step: "01",
                   title: "Paste Any Product Link",
-                  desc: "Copy a link from Amazon, Flipkart, Croma, Myntra, or AJIO. Our scraper automatically recognizes the marketplace and item identity.",
+                  desc: "Copy a link from Amazon, Flipkart, Croma, Myntra, Nykaa, JioMart, or any online store. Our universal extractor identifies the product automatically.",
                   icon: "🔗",
                   badge: "Input Stage",
                   color: "var(--accent-cyan)",
+                  bg: "rgba(6, 182, 212, 0.12)",
+                  border: "rgba(6, 182, 212, 0.28)",
                 },
                 {
                   step: "02",
-                  title: "Live Cross-Store Matching",
-                  desc: "ShopSmart scans alternate stores in parallel, extracting real-time pricing, stock status, delivery speed, and coupon codes.",
+                  title: "Selective Availability Match",
+                  desc: "DealLens checks which marketplaces actually carry that product & category (showing only the 3–4 available stores and filtering out unrelated ones).",
                   icon: "⚡",
                   badge: "Extraction Stage",
                   color: "var(--accent-blue)",
+                  bg: "rgba(59, 130, 246, 0.12)",
+                  border: "rgba(59, 130, 246, 0.28)",
                 },
                 {
                   step: "03",
@@ -227,6 +231,8 @@ const Home = () => {
                   icon: "🏆",
                   badge: "Decision Stage",
                   color: "var(--accent-green)",
+                  bg: "rgba(16, 185, 129, 0.12)",
+                  border: "rgba(16, 185, 129, 0.28)",
                 },
               ].map((item, i) => (
                 <div
@@ -246,8 +252,8 @@ const Home = () => {
                         width: 48,
                         height: 48,
                         borderRadius: "12px",
-                        background: `${item.color}15`,
-                        border: `1px solid ${item.color}35`,
+                        background: item.bg,
+                        border: `1px solid ${item.border}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",

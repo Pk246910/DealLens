@@ -1,6 +1,6 @@
 Hello {{ user_name }},
 
-Your ShopSmart price alert has been triggered.
+Your DealLens price alert has been triggered.
 
 Product: {{ product_title }}
 Platform: {{ platform }}
@@ -11,4 +11,4 @@ Your target price has been reached.
 
 {% if product_url %}View Product: {{ product_url }}{% endif %}
 
-Thank you for using ShopSmart.
+Thank you for using DealLens.

@@ -124,16 +124,105 @@ class ChangePasswordView(APIView):
 def admin_stats(request):
     if not request.user.is_staff:
         return Response({'detail': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+    from .models import PriceAlert
     data = {
         'users': User.objects.count(),
         'products': Product.objects.count(),
         'offers': ProductOffer.objects.count(),
         'wishlists': Wishlist.objects.count(),
+        'alerts': PriceAlert.objects.count(),
         'platforms': Platform.objects.count(),
         'analyses': URLAnalysis.objects.count(),
         'recent_users': UserSerializer(User.objects.order_by('-date_joined')[:5], many=True).data,
     }
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_user_activity(request, pk):
+    """Return a specific user's profile, wishlist items, and price alerts for Admin inspection."""
+    if not request.user.is_staff:
+        return Response({'detail': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        target = User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    from .models import PriceAlert
+    from .serializers import PriceAlertSerializer
+    from products.serializers import WishlistSerializer
+
+    wishlists = (
+        Wishlist.objects.filter(user=target)
+        .select_related('product')
+        .prefetch_related('product__offers')
+        .order_by('-added_at')
+    )
+    alerts = (
+        PriceAlert.objects.filter(user=target)
+        .select_related('product')
+        .prefetch_related('product__offers')
+        .order_by('-created_at')
+    )
+
+    return Response({
+        'user': UserSerializer(target).data,
+        'wishlist': WishlistSerializer(wishlists, many=True).data,
+        'alerts': PriceAlertSerializer(alerts, many=True).data,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_monthly_report(request):
+    """Generate, view, and download 30-day / monthly operational reports (Admin only)."""
+    if not request.user.is_staff:
+        return Response({'detail': 'Admin only'}, status=status.HTTP_403_FORBIDDEN)
+
+    import os
+    from django.http import HttpResponse
+    from .report_service import (
+        build_monthly_report_payload,
+        get_reports_directory,
+        render_report_csv,
+        render_report_html,
+    )
+
+    archived_file = request.query_params.get('file', '').strip()
+    if archived_file:
+        safe_name = os.path.basename(archived_file)
+        if safe_name != archived_file or not (safe_name.endswith('.csv') or safe_name.endswith('.html')):
+            return Response({'detail': 'Invalid report filename'}, status=status.HTTP_400_BAD_REQUEST)
+        fpath = os.path.join(get_reports_directory(), safe_name)
+        if not os.path.isfile(fpath):
+            return Response({'detail': 'Report file not found'}, status=status.HTTP_404_NOT_FOUND)
+        content_type = 'text/csv; charset=utf-8' if safe_name.endswith('.csv') else 'text/html; charset=utf-8'
+        with open(fpath, 'rb') as f:
+            resp = HttpResponse(f.read(), content_type=content_type)
+        resp['Content-Disposition'] = f'attachment; filename="{safe_name}"'
+        return resp
+
+    period = request.query_params.get('period', '30d').strip() or '30d'
+    export_fmt = request.query_params.get('export', '').strip().lower()
+
+    payload = build_monthly_report_payload(period_key=period, requested_by=request.user.username)
+
+    if export_fmt == 'csv':
+        csv_text = render_report_csv(payload)
+        fname = payload['report_meta']['saved_csv_filename']
+        resp = HttpResponse(csv_text, content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = f'attachment; filename="{fname}"'
+        return resp
+
+    if export_fmt == 'html':
+        html_text = render_report_html(payload)
+        fname = payload['report_meta']['saved_html_filename']
+        resp = HttpResponse(html_text, content_type='text/html; charset=utf-8')
+        resp['Content-Disposition'] = f'attachment; filename="{fname}"'
+        return resp
+
+    return Response(payload)
 
 
 @api_view(['POST'])
@@ -227,10 +316,10 @@ class ForgotPasswordView(APIView):
             frontend_link = f"{frontend_origin}/forgot-password?uid={uid}&token={token}"
             try:
                 send_mail(
-                    subject="ShopSmart password reset",
+                    subject="DealLens password reset",
                     message=(
                         f"Hello {user.username},\n\n"
-                        f"Reset your ShopSmart password using this link "
+                        f"Reset your DealLens password using this link "
                         f"(valid for a limited time, single use):\n{frontend_link}\n\n"
                         f"If you did not request this, ignore this email."
                     ),

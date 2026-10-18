@@ -76,9 +76,9 @@ const AdminLogin = () => {
       }
 
       // 3. Authorized staff member - store credentials
-      localStorage.setItem("shopsmart_access", access);
-      localStorage.setItem("shopsmart_refresh", refresh);
-      localStorage.setItem("shopsmart_user", JSON.stringify(userData));
+      localStorage.setItem("deallens_access", access);
+      localStorage.setItem("deallens_refresh", refresh);
+      localStorage.setItem("deallens_user", JSON.stringify(userData));
       setUser(userData);
 
       toast.success(`Staff clearance verified. Welcome, ${userData.username}`);

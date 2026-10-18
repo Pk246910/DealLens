@@ -163,7 +163,7 @@ const Wishlist = () => {
             Your Wishlist is Empty
           </h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", maxWidth: 440, margin: "0 auto 1.5rem" }}>
-            Paste any product link into the ShopSmart analyzer or browse recent analyses to save products to your watchlist.
+            Paste any product link into the DealLens analyzer or browse recent analyses to save products to your watchlist.
           </p>
           <Link to="/" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
             <Sparkles size={16} />

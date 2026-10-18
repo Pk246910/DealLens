@@ -116,7 +116,7 @@ const Alerts = () => {
           Active Price Drop Monitors ({alerts.length})
         </h1>
         <p style={{ color: "var(--text-secondary)", fontSize: "0.92rem", margin: 0 }}>
-          ShopSmart background monitors continuously check store prices and notify you when prices reach your target.
+          DealLens background monitors continuously check store prices and notify you when prices reach your target.
         </p>
       </div>
 

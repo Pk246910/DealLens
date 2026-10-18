@@ -32,9 +32,9 @@ import {
 import API from "../api/axios";
 import ShareButton from "../components/ShareButton";
 import PlatformBadge from "../components/PlatformBadge";
-import ScoreBadge from "../components/ScoreBadge";
+import MarketplaceComparisonCards from "../components/MarketplaceComparisonCards";
 import { getProductImage, handleImageError } from "../utils/images";
-import { getPlatformColor } from "../utils/platforms";
+import { getPlatformColor, ALL_CHECKED_PLATFORMS } from "../utils/platforms";
 
 const scoreColor = (s) =>
   s >= 80 ? "#10b981" : s >= 60 ? "#06b6d4" : s >= 40 ? "#f59e0b" : "#f43f5e";
@@ -92,7 +92,7 @@ const DecisionReport = () => {
 
         if (prodId) {
           fetchPromises.push(
-            API.get(`/products/${prodId}/history/`)
+            API.get(`/products/${prodId}/history/`, { params: { autoseed: "1" } })
               .then((res) => {
                 if (!cancelled && res.data) {
                   setPriceHistory(Array.isArray(res.data) ? res.data : res.data.results || []);
@@ -175,28 +175,46 @@ const DecisionReport = () => {
     for (let ago = 30; ago >= 0; ago--) {
       const d = new Date(now - ago * dayMs);
       const label = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-      const iso = d.toISOString().split("T")[0];
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const iso = `${y}-${m}-${day}`;
       dates.push({ label, iso, ago });
     }
 
     const realByStore = {};
     historyRows.forEach((h) => {
       const store = h.store_name;
+      if (!store || !(Number(h.price) > 0)) return;
       if (!realByStore[store]) realByStore[store] = [];
+      const dObj = new Date(h.recorded_at);
+      const iso = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, "0")}-${String(dObj.getDate()).padStart(2, "0")}`;
       realByStore[store].push({
-        date: h.recorded_at?.split("T")[0],
+        date: iso,
         price: parseFloat(h.price),
+        ts: dObj.getTime(),
       });
     });
 
     realStores.forEach((store) => {
-      const recs = realByStore[store] || [];
-      if (recs.length === 1) {
-        const base = recs[0].price;
+      const recs = (realByStore[store] || []).sort((a, b) => a.ts - b.ts);
+      if (recs.length <= 1) {
+        const base = recs[0]?.price || 0;
+        const seed = store.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
         realByStore[store] = dates.map((d, idx) => ({
           date: d.iso,
-          price: Math.round(base * (1 + 0.012 * Math.sin(idx * 0.75 + 1))),
+          price: idx === dates.length - 1 ? base : Math.round(base * (1 + 0.015 * Math.sin(idx * 0.75 + (seed % 5)))),
         }));
+      } else {
+        realByStore[store] = recs;
+      }
+    });
+
+    const lastKnown = {};
+    realStores.forEach((store) => {
+      const recs = realByStore[store] || [];
+      if (recs.length > 0) {
+        lastKnown[store] = recs[0].price;
       }
     });
 
@@ -204,11 +222,12 @@ const DecisionReport = () => {
       const point = { date: label };
       realStores.forEach((store) => {
         const recs = realByStore[store] || [];
-        const match = recs.find((r) => r.date === iso);
+        const match = recs.filter((r) => r.date === iso).pop();
         if (match) {
-          point[store] = match.price;
-        } else if (recs.length > 0) {
-          point[store] = recs[recs.length - 1].price;
+          lastKnown[store] = match.price;
+        }
+        if (lastKnown[store] !== undefined) {
+          point[store] = lastKnown[store];
         }
       });
       demoTrendStores.forEach((l) => {
@@ -331,9 +350,22 @@ const DecisionReport = () => {
     });
   }
 
-  // Combined cross-marketplace listings
-  const allDisplayListings = [...baseListings, ...extraListings, ...referenceListings];
+  // Combined cross-marketplace listings (strictly selective 3-4 available platforms for this product)
+  const allDisplayListings = [...baseListings, ...extraListings, ...referenceListings].slice(0, 4);
   allDisplayListings.sort((a, b) => Number(a.price) - Number(b.price));
+
+  const availablePlatformNames = allDisplayListings.map((l) => l.platform).filter(Boolean);
+  const unavailablePlatforms = (
+    comparison.unavailable_platforms && comparison.unavailable_platforms.length > 0
+      ? comparison.unavailable_platforms
+      : ALL_CHECKED_PLATFORMS
+  ).filter(
+    (p) => !availablePlatformNames.some((ap) => ap.toLowerCase() === p.toLowerCase())
+  );
+  const visibleHistoryPlatforms = historyPlatforms.filter((p) =>
+    availablePlatformNames.length === 0 ||
+    availablePlatformNames.some((ap) => ap.toLowerCase() === p.toLowerCase())
+  );
 
   const bestDeal = allDisplayListings[0] || null;
 
@@ -440,9 +472,13 @@ const DecisionReport = () => {
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               marginBottom: "0.4rem",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.45rem",
             }}
           >
-            ⚡ Official ShopSmart Cross-Marketplace Intelligence Report
+            <span>🔍 Official DealLens Cross-Marketplace Intelligence Report</span>
           </div>
 
           <h1
@@ -488,7 +524,7 @@ const DecisionReport = () => {
           className="card-panel"
           style={{
             borderLeft: `5px solid ${verdictColor}`,
-            background: "linear-gradient(135deg, rgba(22, 32, 50, 0.9), rgba(11, 15, 25, 0.95))",
+            background: "var(--bg-banner-gradient)",
             boxShadow: `0 0 25px -5px ${verdictColor}33`,
           }}
         >
@@ -573,7 +609,7 @@ const DecisionReport = () => {
                 fontSize: "0.92rem",
                 color: "var(--text-primary)",
                 lineHeight: 1.6,
-                borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+                borderTop: "1px solid var(--border-color)",
                 paddingTop: "1rem",
               }}
             >
@@ -665,22 +701,22 @@ const DecisionReport = () => {
             <div style={{ width: "100%", height: Math.max(200, priceCompareData.length * 60) }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={priceCompareData} layout="vertical" margin={{ left: 15, right: 30, top: 10, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.06)" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
                   <XAxis
                     type="number"
-                    tick={{ fill: "#94a3b8", fontSize: 11, fontFamily: "var(--font-mono)" }}
+                    tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "var(--font-mono)" }}
                     tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-                    axisLine={{ stroke: "rgba(255, 255, 255, 0.1)" }}
+                    axisLine={{ stroke: "var(--border-color)" }}
                   />
                   <YAxis
                     type="category"
                     dataKey="name"
-                    tick={{ fill: "#f8fafc", fontSize: 12, fontWeight: 700 }}
+                    tick={{ fill: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}
                     width={110}
-                    axisLine={{ stroke: "rgba(255, 255, 255, 0.1)" }}
+                    axisLine={{ stroke: "var(--border-color)" }}
                   />
                   <Tooltip
-                    cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                    cursor={{ fill: "var(--bg-subtle-surface)" }}
                     formatter={(v) => [`₹${Number(v).toLocaleString("en-IN")}`, "Offer Price"]}
                     contentStyle={{
                       background: "var(--bg-secondary)",
@@ -688,7 +724,7 @@ const DecisionReport = () => {
                       borderRadius: "10px",
                       fontSize: "0.85rem",
                       color: "var(--text-primary)",
-                      boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
+                      boxShadow: "var(--shadow-card)",
                     }}
                     labelStyle={{ color: "var(--text-primary)", fontWeight: 800, marginBottom: "0.2rem" }}
                     itemStyle={{ color: "var(--accent-cyan)", fontWeight: 700, fontFamily: "var(--font-mono)" }}
@@ -702,102 +738,27 @@ const DecisionReport = () => {
               </ResponsiveContainer>
             </div>
 
-            {/* High-Contrast Multi-Store Price Matrix */}
-            <div className="table-responsive" style={{ marginTop: "1.25rem" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
-                <thead>
-                  <tr style={{ color: "#94a3b8", borderBottom: "1px solid var(--border-color)", textAlign: "left" }}>
-                    <th style={{ padding: "0.75rem 1rem", fontWeight: 700, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Store Platform</th>
-                    <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 700, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Current Price</th>
-                    <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 700, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Original MRP</th>
-                    <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 700, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Direct Savings</th>
-                    <th style={{ padding: "0.75rem 1rem", textAlign: "center", fontWeight: 700, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Deal Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allDisplayListings.map((l, i) => {
-                    const savings = l.mrp > l.price ? l.mrp - l.price : 0;
-                    return (
-                      <tr
-                        key={l.platform}
-                        style={{
-                          background: i === 0 ? "rgba(16, 185, 129, 0.08)" : "transparent",
-                          borderBottom: "1px solid var(--border-subtle)",
-                          transition: "background 0.2s ease",
-                        }}
-                      >
-                        <td style={{ padding: "0.75rem 1rem" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            <PlatformBadge platform={l.platform} size="sm" />
-                            {i === 0 && (
-                              <span className="badge badge-green" style={{ fontSize: "0.65rem", padding: "0.15rem 0.45rem" }}>
-                                BEST DEAL
-                              </span>
-                            )}
-                            {l.is_demo && (
-                              <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", background: "rgba(255, 255, 255, 0.04)", padding: "0.1rem 0.35rem", borderRadius: "4px" }}>
-                                Reference
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td
-                          style={{
-                            padding: "0.75rem 1rem",
-                            textAlign: "right",
-                            fontWeight: 800,
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "0.95rem",
-                            color: i === 0 ? "var(--accent-emerald)" : "#f8fafc",
-                          }}
-                        >
-                          {l.price > 0 ? `₹${Number(l.price).toLocaleString("en-IN")}` : "—"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "0.75rem 1rem",
-                            textAlign: "right",
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "0.88rem",
-                            color: "#cbd5e1",
-                            textDecoration: l.mrp > l.price ? "line-through" : undefined,
-                          }}
-                        >
-                          {l.mrp > 0 ? `₹${Number(l.mrp).toLocaleString("en-IN")}` : "—"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "0.75rem 1rem",
-                            textAlign: "right",
-                            fontWeight: 700,
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "0.9rem",
-                            color: savings > 0 ? "var(--accent-cyan)" : "var(--text-muted)",
-                          }}
-                        >
-                          {savings > 0 ? `Save ₹${savings.toLocaleString("en-IN")}` : "—"}
-                        </td>
-                        <td style={{ padding: "0.75rem 1rem", textAlign: "center" }}>
-                          <ScoreBadge score={l.score} size="sm" />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            {/* Card-Based Multi-Store Price Matrix */}
+            <div style={{ marginTop: "1.25rem" }}>
+              <MarketplaceComparisonCards
+                listings={allDisplayListings}
+                productTitle={product.title}
+                availablePlatformNames={availablePlatformNames}
+                unavailablePlatforms={unavailablePlatforms}
+              />
             </div>
           </div>
         )}
 
         {/* 4. Multi-Platform 30-Day Historical Trend Line */}
-        {hasAnyHistory && (
+        {hasAnyHistory && visibleHistoryPlatforms.length > 0 && (
           <div className="card-panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
               <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: "0.45rem" }}>
                 <TrendingDown size={18} color="var(--accent-cyan)" /> 30-Day Multi-Platform Historical Price Movement
               </h3>
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                {historyPlatforms.map((p) => (
+                {visibleHistoryPlatforms.map((p) => (
                   <span
                     key={p}
                     style={{
@@ -818,10 +779,10 @@ const DecisionReport = () => {
             <div style={{ width: "100%", height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historyChartData} margin={{ top: 10, right: 25, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.06)" />
-                  <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                  <XAxis dataKey="date" tick={{ fill: "var(--text-secondary)", fontSize: 10 }} />
                   <YAxis
-                    tick={{ fill: "#94a3b8", fontSize: 11, fontFamily: "var(--font-mono)" }}
+                    tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "var(--font-mono)" }}
                     tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
@@ -831,13 +792,13 @@ const DecisionReport = () => {
                       borderRadius: "10px",
                       fontSize: "0.85rem",
                       color: "var(--text-primary)",
-                      boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
+                      boxShadow: "var(--shadow-card)",
                     }}
                     labelStyle={{ color: "var(--text-primary)", fontWeight: 800, marginBottom: "0.3rem" }}
                     formatter={(v, name) => [`₹${Number(v).toLocaleString("en-IN")}`, name]}
                   />
                   <Legend />
-                  {historyPlatforms.map((p) => (
+                  {visibleHistoryPlatforms.map((p) => (
                     <Line
                       key={p}
                       type="monotone"
@@ -917,7 +878,7 @@ const DecisionReport = () => {
         {/* Report Document Footer */}
         <div style={{ textAlign: "center", padding: "1.5rem 0", borderTop: "1px solid var(--border-color)" }}>
           <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
-            Generated by <strong style={{ color: "var(--accent-cyan)" }}>ShopSmart</strong> AI Decision-Support Platform · Report Date: {reportDate}<br />
+            Generated by <strong style={{ color: "var(--accent-cyan)" }}>DealLens</strong> AI Decision-Support Platform · Report Date: {reportDate}<br />
             Data extracted from verified marketplaces across Amazon India, Flipkart, and Croma. Prices and availability are subject to merchant terms.
           </div>
         </div>

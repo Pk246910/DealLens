@@ -1,4 +1,4 @@
-# ShopSmart local-dev compose stack.
+# DealLens local-dev compose stack.
 # PRODUCTION NOTES (do not deploy as-is):
 # - Set DJANGO_SECRET_KEY, DB_PASSWORD, and (if SMTP is used) EMAIL_HOST_PASSWORD
 #   explicitly; never rely on the dev fallbacks below.
@@ -11,7 +11,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-shopsmart}
+      POSTGRES_DB: ${DB_NAME:-deallens}
       POSTGRES_USER: ${DB_USER:-postgres}
       # WARNING: change DB_PASSWORD in production — never use the default
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
@@ -35,7 +35,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-insecure-key}
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      DB_NAME: ${DB_NAME:-shopsmart}
+      DB_NAME: ${DB_NAME:-deallens}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_HOST: db

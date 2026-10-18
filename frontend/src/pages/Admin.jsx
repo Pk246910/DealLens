@@ -32,6 +32,12 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  Bell,
+  FileText,
+  Download,
+  Calendar,
+  FolderOpen,
+  Printer,
 } from "lucide-react";
 
 const NAV_TABS = [
@@ -40,6 +46,7 @@ const NAV_TABS = [
   { key: "users", label: "User Access", icon: Users },
   { key: "analyses", label: "Analyses Log", icon: Activity },
   { key: "offers", label: "Store Offers", icon: Tag },
+  { key: "reports", label: "Monthly Reports", icon: FileText },
 ];
 
 const Admin = () => {
@@ -66,10 +73,14 @@ const Admin = () => {
   const [productOffers, setProductOffers] = useState([]);
   const [offersFetching, setOffersFetching] = useState(false);
 
-  // Users
+  // Users & User Activity Inspector (Wishlist + Price Alerts)
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userActivity, setUserActivity] = useState({ wishlist: [], alerts: [] });
+  const [userActivityLoading, setUserActivityLoading] = useState(false);
+  const [userActivityFilter, setUserActivityFilter] = useState("all"); // "all" | "wishlist" | "alerts"
 
   // Analyses Telemetry
   const [analyses, setAnalyses] = useState([]);
@@ -86,6 +97,12 @@ const Admin = () => {
   const [offersPlatform, setOffersPlatform] = useState("");
   const [offersSort, setOffersSort] = useState("");
   const [platforms, setPlatforms] = useState([]);
+
+  // 30-Day / Monthly Admin Reports
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState("30d");
+  const [reportDownloading, setReportDownloading] = useState("");
 
   // Verify staff clearance
   useEffect(() => {
@@ -210,6 +227,92 @@ const Admin = () => {
     }
   }, []);
 
+  // Fetch 30-Day / Monthly Operational Report
+  const fetchMonthlyReport = useCallback(
+    async (periodOverride) => {
+      const targetPeriod = periodOverride || reportPeriod || "30d";
+      setReportLoading(true);
+      try {
+        const res = await API.get("/users/admin-monthly-report/", {
+          params: { period: targetPeriod },
+        });
+        setReportData(res.data || null);
+      } catch {
+        toast.error("Failed to generate 30-day admin report.");
+        setReportData(null);
+      } finally {
+        setReportLoading(false);
+      }
+    },
+    [reportPeriod]
+  );
+
+  // Download 30-Day Report File to Local Device Files (CSV or HTML)
+  const handleDownloadReportFile = async (format = "csv", archivedFilename = "") => {
+    const tag = archivedFilename || `${format}_${reportPeriod}`;
+    setReportDownloading(tag);
+    try {
+      const params = archivedFilename
+        ? { file: archivedFilename }
+        : { period: reportPeriod, export: format };
+      const res = await API.get("/users/admin-monthly-report/", {
+        params,
+        responseType: "blob",
+      });
+
+      const defaultName =
+        archivedFilename ||
+        (format === "html"
+          ? reportData?.report_meta?.saved_html_filename || `DealLens_Monthly_Report_${reportPeriod}.html`
+          : reportData?.report_meta?.saved_csv_filename || `DealLens_Monthly_Report_${reportPeriod}.csv`);
+
+      const mimeType =
+        defaultName.endsWith(".html") ? "text/html;charset=utf-8" : "text/csv;charset=utf-8";
+      const blob = new Blob([res.data], { type: mimeType });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", defaultName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+
+      toast.success(`Report "${defaultName}" saved to your device files!`);
+    } catch {
+      toast.error("Failed to download report file.");
+    } finally {
+      setReportDownloading("");
+    }
+  };
+
+  // Print / Save 30-Day Report as PDF
+  const handlePrintReportPdf = async () => {
+    setReportDownloading("pdf");
+    try {
+      const res = await API.get("/users/admin-monthly-report/", {
+        params: { period: reportPeriod, export: "html" },
+      });
+      const htmlString = typeof res.data === "string" ? res.data : "";
+      const printWin = window.open("", "_blank", "width=1080,height=850");
+      if (printWin) {
+        printWin.document.open();
+        printWin.document.write(htmlString);
+        printWin.document.close();
+        setTimeout(() => {
+          printWin.focus();
+          printWin.print();
+        }, 350);
+      } else {
+        toast.error("Popup blocked — please use Download HTML or CSV Report.");
+      }
+    } catch {
+      toast.error("Failed to prepare printable PDF report.");
+    } finally {
+      setReportDownloading("");
+    }
+  };
+
   // Load data based on active tab
   useEffect(() => {
     if (!verified) return;
@@ -221,7 +324,19 @@ const Admin = () => {
       fetchOffers();
       fetchPlatforms();
     }
-  }, [activeTab, verified, fetchStats, fetchProducts, fetchUsers, fetchAnalyses, fetchOffers, fetchPlatforms]);
+    if (activeTab === "reports") fetchMonthlyReport(reportPeriod);
+  }, [
+    activeTab,
+    verified,
+    reportPeriod,
+    fetchStats,
+    fetchProducts,
+    fetchUsers,
+    fetchAnalyses,
+    fetchOffers,
+    fetchPlatforms,
+    fetchMonthlyReport,
+  ]);
 
   // User RBAC: Promote
   const handlePromote = async (u) => {
@@ -246,6 +361,34 @@ const Admin = () => {
       toast.success(`${u.username} demoted to Customer.`);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Failed to demote user.");
+    }
+  };
+
+  // Inspect User Wishlist & Price Alerts
+  const handleInspectUser = async (u, initialFilter = "all") => {
+    if (selectedUser?.id === u.id && activeTab === "users" && initialFilter === userActivityFilter) {
+      setSelectedUser(null);
+      return;
+    }
+    setSelectedUser(u);
+    setUserActivityFilter(initialFilter);
+    setUserActivity({ wishlist: [], alerts: [] });
+    setUserActivityLoading(true);
+    try {
+      const res = await API.get(`/users/${u.id}/activity/`);
+      const data = res.data || {};
+      setUserActivity({
+        wishlist: Array.isArray(data.wishlist) ? data.wishlist : [],
+        alerts: Array.isArray(data.alerts) ? data.alerts : [],
+      });
+      if (data.user) {
+        setSelectedUser((prev) => (prev && prev.id === u.id ? { ...prev, ...data.user } : prev));
+      }
+    } catch {
+      toast.error(`Failed to load wishlist & price alerts for ${u.username}.`);
+      setUserActivity({ wishlist: [], alerts: [] });
+    } finally {
+      setUserActivityLoading(false);
     }
   };
 
@@ -357,6 +500,426 @@ const Admin = () => {
       String(u.id).includes(term)
     );
   });
+
+  // Render User Wishlist & Price Alerts Inspector Panel
+  const renderUserActivityPanel = (targetUser) => {
+    if (!targetUser) return null;
+    const wishlistItems = userActivity.wishlist || [];
+    const alertItems = userActivity.alerts || [];
+    const showWishlist = userActivityFilter === "all" || userActivityFilter === "wishlist";
+    const showAlerts = userActivityFilter === "all" || userActivityFilter === "alerts";
+
+    return (
+      <div
+        style={{
+          padding: "1.25rem 1.5rem",
+          background: "var(--bg-detail-gradient)",
+          borderRadius: "12px",
+          border: "1px solid rgba(6, 182, 212, 0.28)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        {/* Top Bar: User Info + Filter Tabs + Close */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.85rem",
+            paddingBottom: "1rem",
+            marginBottom: "1.1rem",
+            borderBottom: "1px solid var(--border-subtle)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: "0.95rem",
+              }}
+            >
+              {targetUser.username?.charAt(0).toUpperCase() || "U"}
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 800, fontSize: "1rem", color: "var(--text-primary)" }}>
+                  {targetUser.username}&apos;s Saved Activity
+                </span>
+                <span className="badge badge-cyan" style={{ fontSize: "0.68rem" }}>
+                  UID #{targetUser.id}
+                </span>
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                {targetUser.email || "No email registered"} • Joined{" "}
+                {targetUser.date_joined
+                  ? new Date(targetUser.date_joined).toLocaleDateString("en-IN", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "—"}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+            {[
+              { key: "all", label: `All (${wishlistItems.length + alertItems.length})` },
+              { key: "wishlist", label: `Wishlist (${wishlistItems.length})`, icon: Heart, color: "var(--accent-rose)" },
+              { key: "alerts", label: `Price Alerts (${alertItems.length})`, icon: Bell, color: "var(--accent-amber)" },
+            ].map((t) => {
+              const Icon = t.icon;
+              const active = userActivityFilter === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setUserActivityFilter(t.key);
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    padding: "0.35rem 0.75rem",
+                    borderRadius: 999,
+                    fontSize: "0.76rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: "1px solid",
+                    borderColor: active ? "var(--accent-cyan)" : "var(--border-color)",
+                    background: active ? "rgba(6, 182, 212, 0.16)" : "var(--bg-secondary)",
+                    color: active ? "var(--accent-cyan)" : "var(--text-secondary)",
+                  }}
+                >
+                  {Icon && <Icon size={12} style={{ color: t.color }} />}
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedUser(null);
+              }}
+              className="btn btn-secondary btn-sm"
+              style={{ padding: "0.32rem 0.6rem", fontSize: "0.75rem" }}
+              title="Close user inspector"
+            >
+              <X size={14} /> Close
+            </button>
+          </div>
+        </div>
+
+        {userActivityLoading ? (
+          <div style={{ textAlign: "center", padding: "2rem 1rem", color: "var(--text-secondary)" }}>
+            <RefreshCw size={22} className="spinner" style={{ margin: "0 auto 0.5rem", color: "var(--accent-cyan)" }} />
+            <div style={{ fontSize: "0.85rem" }}>
+              Loading {targetUser.username}&apos;s wishlist &amp; price alerts...
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                showWishlist && showAlerts
+                  ? "repeat(auto-fit, minmax(320px, 1fr))"
+                  : "1fr",
+              gap: "1.25rem",
+            }}
+          >
+            {/* 1. USER WISHLIST SECTION */}
+            {showWishlist && (
+              <div
+                style={{
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "10px",
+                  padding: "1rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "0.85rem",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      fontWeight: 700,
+                      fontSize: "0.88rem",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Heart size={15} color="var(--accent-rose)" />
+                    Saved Wishlist ({wishlistItems.length})
+                  </span>
+                </div>
+
+                {wishlistItems.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "1.5rem 1rem",
+                      textAlign: "center",
+                      color: "var(--text-muted)",
+                      fontSize: "0.82rem",
+                      background: "rgba(255, 255, 255, 0.015)",
+                      borderRadius: "8px",
+                      border: "1px dashed var(--border-subtle)",
+                    }}
+                  >
+                    No products saved in {targetUser.username}&apos;s wishlist.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", maxHeight: 340, overflowY: "auto" }}>
+                    {wishlistItems.map((w) => {
+                      const p = w.product_details || {};
+                      const lowestPrice = p.lowest_price || p.best_offer?.current_price;
+                      const bestStore = p.best_offer?.store_name || (p.platforms_available || [])[0];
+                      return (
+                        <div
+                          key={w.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "0.75rem",
+                            padding: "0.65rem 0.75rem",
+                            background: "var(--bg-card)",
+                            borderRadius: "8px",
+                            border: "1px solid var(--border-subtle)",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", minWidth: 0, flex: 1 }}>
+                            <img
+                              src={getProductImage(p.image_url, p)}
+                              alt={p.title || "Product"}
+                              onError={handleImageError}
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: "6px",
+                                objectFit: "contain",
+                                background: "#fff",
+                                padding: 2,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <Link
+                                to={`/product/${p.id || w.product}`}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  display: "block",
+                                  fontWeight: 700,
+                                  fontSize: "0.83rem",
+                                  color: "var(--text-primary)",
+                                  textDecoration: "none",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                                title={p.title}
+                              >
+                                {p.title || `Product #${w.product}`}
+                              </Link>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", marginTop: "0.2rem", fontSize: "0.73rem", color: "var(--text-muted)" }}>
+                                <span>{p.brand || p.category || "Catalog Item"}</span>
+                                {bestStore && <PlatformBadge platform={bestStore} size="sm" />}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div
+                              style={{
+                                fontWeight: 800,
+                                fontSize: "0.86rem",
+                                color: "var(--accent-cyan)",
+                                fontFamily: "var(--font-mono)",
+                              }}
+                            >
+                              {lowestPrice ? `₹${Number(lowestPrice).toLocaleString("en-IN")}` : "—"}
+                            </div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                              {w.added_at
+                                ? new Date(w.added_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })
+                                : ""}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. USER PRICE ALERTS SECTION */}
+            {showAlerts && (
+              <div
+                style={{
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "10px",
+                  padding: "1rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "0.85rem",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      fontWeight: 700,
+                      fontSize: "0.88rem",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <Bell size={15} color="var(--accent-amber)" />
+                    Price Drop Alerts ({alertItems.length})
+                  </span>
+                </div>
+
+                {alertItems.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "1.5rem 1rem",
+                      textAlign: "center",
+                      color: "var(--text-muted)",
+                      fontSize: "0.82rem",
+                      background: "rgba(255, 255, 255, 0.015)",
+                      borderRadius: "8px",
+                      border: "1px dashed var(--border-subtle)",
+                    }}
+                  >
+                    No price drop alerts configured by {targetUser.username}.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", maxHeight: 340, overflowY: "auto" }}>
+                    {alertItems.map((al) => {
+                      const triggered = Boolean(al.is_triggered);
+                      return (
+                        <div
+                          key={al.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "0.75rem",
+                            padding: "0.65rem 0.75rem",
+                            background: "var(--bg-card)",
+                            borderRadius: "8px",
+                            border: `1px solid ${triggered ? "rgba(16, 185, 129, 0.35)" : "var(--border-subtle)"}`,
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", minWidth: 0, flex: 1 }}>
+                            <img
+                              src={getProductImage(al.product_image, {
+                                title: al.product_title,
+                                brand: al.product_brand,
+                                category: al.product_category,
+                              })}
+                              alt={al.product_title || "Product"}
+                              onError={handleImageError}
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: "6px",
+                                objectFit: "contain",
+                                background: "#fff",
+                                padding: 2,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <Link
+                                to={`/product/${al.product}`}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  display: "block",
+                                  fontWeight: 700,
+                                  fontSize: "0.83rem",
+                                  color: "var(--text-primary)",
+                                  textDecoration: "none",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                                title={al.product_title}
+                              >
+                                {al.product_title || `Product #${al.product}`}
+                              </Link>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", marginTop: "0.2rem", fontSize: "0.73rem" }}>
+                                <span style={{ color: "var(--accent-amber)", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                                  Target: ₹{Number(al.target_price).toLocaleString("en-IN")}
+                                </span>
+                                {al.current_lowest && (
+                                  <span style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                                    • Now: ₹{Number(al.current_lowest).toLocaleString("en-IN")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            {triggered ? (
+                              <span className="badge badge-green" style={{ fontSize: "0.68rem" }}>
+                                Target Reached
+                              </span>
+                            ) : al.active ? (
+                              <span className="badge badge-amber" style={{ fontSize: "0.68rem" }}>
+                                Monitoring
+                              </span>
+                            ) : (
+                              <span className="badge badge-mono" style={{ fontSize: "0.68rem" }}>
+                                Inactive
+                              </span>
+                            )}
+                            <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", marginTop: "0.2rem" }}>
+                              {al.created_at
+                                ? new Date(al.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })
+                                : ""}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -512,7 +1075,7 @@ const Admin = () => {
           style={{
             padding: "1rem 1.2rem",
             borderTop: "1px solid var(--border-subtle)",
-            background: "rgba(0, 0, 0, 0.2)",
+            background: "var(--bg-subtle-surface)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", marginBottom: "0.75rem" }}>
@@ -761,7 +1324,7 @@ const Admin = () => {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.5rem" }}>
                   {/* Recent Users Card */}
                   <div className="card-panel" style={{ padding: "1.5rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem" }}>
                       <h3 style={{ fontSize: "1rem", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
                         Recently Registered Shoppers
                       </h3>
@@ -780,6 +1343,9 @@ const Admin = () => {
                         View All →
                       </button>
                     </div>
+                    <p style={{ fontSize: "0.76rem", color: "var(--text-muted)", margin: "0 0 0.85rem" }}>
+                      Click on any user to inspect their Saved Wishlist & Price Drop Alerts.
+                    </p>
 
                     {(stats.recent_users || []).length === 0 ? (
                       <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", padding: "1rem 0" }}>
@@ -787,42 +1353,103 @@ const Admin = () => {
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                        {(stats.recent_users || []).slice(0, 5).map((u) => (
-                          <div
-                            key={u.id}
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              padding: "0.65rem 0.85rem",
-                              background: "rgba(255, 255, 255, 0.02)",
-                              border: "1px solid var(--border-subtle)",
-                              borderRadius: "10px",
-                            }}
-                          >
-                            <div>
-                              <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                                {u.username}
-                              </div>
-                              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                                {u.email || "No email registered"}
-                              </div>
-                            </div>
-                            <span
+                        {(stats.recent_users || []).slice(0, 5).map((u) => {
+                          const isSelected = selectedUser?.id === u.id;
+                          return (
+                            <div
+                              key={u.id}
+                              onClick={() => handleInspectUser(u, "all")}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  handleInspectUser(u, "all");
+                                }
+                              }}
+                              title={`Click to view ${u.username}'s Wishlist & Price Alerts`}
                               style={{
-                                fontSize: "0.72rem",
-                                color: "var(--text-muted)",
-                                fontFamily: "var(--font-mono)",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: "0.75rem",
+                                padding: "0.65rem 0.85rem",
+                                background: isSelected ? "rgba(6, 182, 212, 0.1)" : "rgba(255, 255, 255, 0.02)",
+                                border: `1px solid ${isSelected ? "var(--accent-cyan)" : "var(--border-subtle)"}`,
+                                borderRadius: "10px",
+                                cursor: "pointer",
+                                transition: "all 0.18s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) e.currentTarget.style.borderColor = "var(--accent-cyan)";
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) e.currentTarget.style.borderColor = "var(--border-subtle)";
                               }}
                             >
-                              {new Date(u.date_joined).toLocaleDateString("en-IN", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })}
-                            </span>
-                          </div>
-                        ))}
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                  <span>{u.username}</span>
+                                  <span style={{ fontSize: "0.7rem", color: "var(--accent-cyan)", fontWeight: 600 }}>
+                                    Inspect ↗
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {u.email || "No email registered"}
+                                </div>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.25rem",
+                                    padding: "0.18rem 0.5rem",
+                                    borderRadius: 999,
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
+                                    background: "rgba(244, 63, 94, 0.12)",
+                                    color: "var(--accent-rose)",
+                                    border: "1px solid rgba(244, 63, 94, 0.25)",
+                                  }}
+                                  title="Saved Wishlist Items"
+                                >
+                                  <Heart size={11} /> {u.wishlist_count ?? 0}
+                                </span>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.25rem",
+                                    padding: "0.18rem 0.5rem",
+                                    borderRadius: 999,
+                                    fontSize: "0.72rem",
+                                    fontWeight: 700,
+                                    background: "rgba(245, 158, 11, 0.12)",
+                                    color: "var(--accent-amber)",
+                                    border: "1px solid rgba(245, 158, 11, 0.25)",
+                                  }}
+                                  title="Price Drop Alerts"
+                                >
+                                  <Bell size={11} /> {u.alerts_count ?? 0}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: "0.72rem",
+                                    color: "var(--text-muted)",
+                                    fontFamily: "var(--font-mono)",
+                                  }}
+                                >
+                                  {new Date(u.date_joined).toLocaleDateString("en-IN", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -856,6 +1483,97 @@ const Admin = () => {
                         <span style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>JWT + SimpleJWT Bearer</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Selected User Wishlist & Price Alerts Inspector */}
+                {selectedUser && (
+                  <div style={{ marginTop: "1.5rem" }}>
+                    {renderUserActivityPanel(selectedUser)}
+                  </div>
+                )}
+
+                {/* 30-Day / Monthly Operational Report Banner (Admin-Only) */}
+                <div
+                  className="card-panel"
+                  style={{
+                    marginTop: "1.5rem",
+                    padding: "1.35rem 1.5rem",
+                    border: "1px solid rgba(6, 182, 212, 0.35)",
+                    background:
+                      "linear-gradient(135deg, rgba(6, 182, 212, 0.09) 0%, rgba(16, 185, 129, 0.06) 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "1rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.95rem" }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "12px",
+                        background: "rgba(6, 182, 212, 0.16)",
+                        color: "var(--accent-cyan)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <FileText size={22} />
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                          30-Day / Monthly Platform Operational Report
+                        </h3>
+                        <span className="badge badge-cyan" style={{ fontSize: "0.68rem", textTransform: "uppercase" }}>
+                          Admin Exclusive
+                        </span>
+                      </div>
+                      <p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                        View 30-day shopper registrations, wishlists, price alerts, and marketplace metrics — or download directly to your device files.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("reports")}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        padding: "0.5rem 0.9rem",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      <Eye size={14} />
+                      <span>View 30-Day Report</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadReportFile("csv")}
+                      disabled={reportDownloading !== ""}
+                      className="btn btn-primary btn-sm"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        padding: "0.5rem 0.95rem",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      <Download size={14} />
+                      <span>
+                        {reportDownloading === `csv_${reportPeriod}` ? "Saving..." : "Download CSV to Device"}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </>
@@ -1056,7 +1774,7 @@ const Admin = () => {
                                   colSpan={7}
                                   style={{
                                     padding: "1rem 1.25rem",
-                                    background: "rgba(0, 0, 0, 0.35)",
+                                    background: "var(--bg-subtle-surface)",
                                     borderBottom: "1px solid var(--border-color)",
                                   }}
                                 >
@@ -1242,10 +1960,10 @@ const Admin = () => {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
               <div>
                 <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, fontFamily: "var(--font-heading)" }}>
-                  Role-Based User Access
+                  Role-Based User Access & Shopper Activity
                 </h1>
                 <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: "0.25rem 0 0" }}>
-                  Manage shopper accounts, grant staff clearance, or demote platform operators.
+                  Click any user row to inspect their saved wishlist and price drop alerts, or manage RBAC clearance.
                 </p>
               </div>
 
@@ -1285,145 +2003,281 @@ const Admin = () => {
                         <th style={{ width: 60 }}>UID</th>
                         <th>User Profile</th>
                         <th>Email Contact</th>
+                        <th>Wishlist & Alerts</th>
                         <th>Access Clearance</th>
                         <th>Member Since</th>
-                        <th style={{ textAlign: "right", width: 140 }}>RBAC Action</th>
+                        <th style={{ textAlign: "right", width: 210 }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredUsers.map((u) => {
                         const isSelf = user?.id === u.id;
+                        const isSelected = selectedUser?.id === u.id;
                         return (
-                          <tr key={u.id}>
-                            <td style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                              #{u.id}
-                            </td>
-                            <td>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                                <div
-                                  style={{
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: "50%",
-                                    background: u.is_staff ? "rgba(6, 182, 212, 0.2)" : "rgba(255, 255, 255, 0.08)",
-                                    color: u.is_staff ? "var(--accent-cyan)" : "var(--text-secondary)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontWeight: 700,
-                                    fontSize: "0.75rem",
-                                  }}
-                                >
-                                  {u.username?.charAt(0).toUpperCase()}
+                          <React.Fragment key={u.id}>
+                            <tr
+                              onClick={() => handleInspectUser(u, "all")}
+                              title={`Click to view ${u.username}'s Wishlist & Price Alerts`}
+                              style={{
+                                cursor: "pointer",
+                                background: isSelected ? "rgba(6, 182, 212, 0.08)" : undefined,
+                                transition: "background 0.15s ease",
+                              }}
+                            >
+                              <td style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                                #{u.id}
+                              </td>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                                  <div
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: "50%",
+                                      background: u.is_staff ? "rgba(6, 182, 212, 0.2)" : "var(--bg-subtle-surface)",
+                                      border: u.is_staff ? "none" : "1px solid var(--border-subtle)",
+                                      color: u.is_staff ? "var(--accent-cyan)" : "var(--text-secondary)",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontWeight: 700,
+                                      fontSize: "0.75rem",
+                                    }}
+                                  >
+                                    {u.username?.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.88rem" }}>
+                                      {u.username}
+                                    </span>
+                                    {isSelf && (
+                                      <span
+                                        style={{
+                                          marginLeft: "0.4rem",
+                                          fontSize: "0.7rem",
+                                          color: "var(--accent-cyan)",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        (You)
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div>
-                                  <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.88rem" }}>
-                                    {u.username}
+                              </td>
+                              <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                                {u.email || "—"}
+                              </td>
+                              <td>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isSelected && userActivityFilter === "wishlist") {
+                                        handleInspectUser(u, "all");
+                                      } else if (isSelected) {
+                                        setUserActivityFilter("wishlist");
+                                      } else {
+                                        handleInspectUser(u, "wishlist");
+                                      }
+                                    }}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.28rem",
+                                      fontSize: "0.73rem",
+                                      fontWeight: 700,
+                                      padding: "0.22rem 0.55rem",
+                                      borderRadius: "999px",
+                                      cursor: "pointer",
+                                      background:
+                                        (u.wishlist_count ?? 0) > 0
+                                          ? "rgba(244, 63, 94, 0.14)"
+                                          : "var(--bg-subtle-surface)",
+                                      color:
+                                        (u.wishlist_count ?? 0) > 0
+                                          ? "var(--accent-rose)"
+                                          : "var(--text-muted)",
+                                      border: "1px solid rgba(244, 63, 94, 0.25)",
+                                    }}
+                                    title="View user's saved wishlist"
+                                  >
+                                    <Heart size={11} />
+                                    <span>{u.wishlist_count ?? 0} Wishlist</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isSelected && userActivityFilter === "alerts") {
+                                        handleInspectUser(u, "all");
+                                      } else if (isSelected) {
+                                        setUserActivityFilter("alerts");
+                                      } else {
+                                        handleInspectUser(u, "alerts");
+                                      }
+                                    }}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.28rem",
+                                      fontSize: "0.73rem",
+                                      fontWeight: 700,
+                                      padding: "0.22rem 0.55rem",
+                                      borderRadius: "999px",
+                                      cursor: "pointer",
+                                      background:
+                                        (u.alerts_count ?? 0) > 0
+                                          ? "rgba(245, 158, 11, 0.14)"
+                                          : "var(--bg-subtle-surface)",
+                                      color:
+                                        (u.alerts_count ?? 0) > 0
+                                          ? "var(--accent-amber)"
+                                          : "var(--text-muted)",
+                                      border: "1px solid rgba(245, 158, 11, 0.28)",
+                                    }}
+                                    title="View user's price drop alerts"
+                                  >
+                                    <Bell size={11} />
+                                    <span>{u.alerts_count ?? 0} Alerts</span>
+                                  </button>
+                                </div>
+                              </td>
+                              <td>
+                                {u.is_superuser ? (
+                                  <span
+                                    className="badge badge-purple"
+                                    style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
+                                  >
+                                    Superuser
                                   </span>
-                                  {isSelf && (
-                                    <span
+                                ) : u.is_staff ? (
+                                  <span
+                                    className="badge badge-cyan"
+                                    style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
+                                  >
+                                    Staff Operator
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      fontSize: "0.72rem",
+                                      background: "var(--bg-subtle-surface)",
+                                      border: "1px solid var(--border-subtle)",
+                                      color: "var(--text-muted)",
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    Customer
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                                {new Date(u.date_joined).toLocaleDateString("en-IN", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </td>
+                              <td style={{ textAlign: "right" }}>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleInspectUser(u, "all");
+                                    }}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{
+                                      fontSize: "0.74rem",
+                                      padding: "0.3rem 0.6rem",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem",
+                                    }}
+                                  >
+                                    {isSelected ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                    <span>{isSelected ? "Hide" : "Activity"}</span>
+                                  </button>
+
+                                  {isSelf ? (
+                                    <span style={{ color: "var(--text-muted)", fontSize: "0.75rem", padding: "0 0.25rem" }}>
+                                      You
+                                    </span>
+                                  ) : !u.is_staff ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePromote(u);
+                                      }}
+                                      className="btn btn-sm"
                                       style={{
-                                        marginLeft: "0.4rem",
-                                        fontSize: "0.7rem",
-                                        color: "var(--accent-cyan)",
-                                        fontWeight: 600,
+                                        fontSize: "0.75rem",
+                                        padding: "0.3rem 0.65rem",
+                                        background: "rgba(16, 185, 129, 0.12)",
+                                        color: "var(--accent-emerald)",
+                                        border: "1px solid rgba(16, 185, 129, 0.25)",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "0.3rem",
                                       }}
                                     >
-                                      (You)
-                                    </span>
+                                      <UserCheck size={13} />
+                                      <span>Promote</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDemote(u);
+                                      }}
+                                      className="btn btn-sm"
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        padding: "0.3rem 0.65rem",
+                                        background: "rgba(244, 63, 94, 0.12)",
+                                        color: "var(--accent-rose)",
+                                        border: "1px solid rgba(244, 63, 94, 0.25)",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "0.3rem",
+                                      }}
+                                    >
+                                      <UserX size={13} />
+                                      <span>Demote</span>
+                                    </button>
                                   )}
                                 </div>
-                              </div>
-                            </td>
-                            <td style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                              {u.email || "—"}
-                            </td>
-                            <td>
-                              {u.is_superuser ? (
-                                <span
-                                  className="badge badge-purple"
-                                  style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
-                                >
-                                  Superuser
-                                </span>
-                              ) : u.is_staff ? (
-                                <span
-                                  className="badge badge-cyan"
-                                  style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
-                                >
-                                  Staff Operator
-                                </span>
-                              ) : (
-                                <span
-                                  className="badge"
+                              </td>
+                            </tr>
+
+                            {/* Accordion: Selected User's Saved Wishlist & Price Drop Alerts */}
+                            {isSelected && (
+                              <tr>
+                                <td
+                                  colSpan={7}
                                   style={{
-                                    fontSize: "0.72rem",
-                                    background: "rgba(255, 255, 255, 0.06)",
-                                    color: "var(--text-muted)",
-                                    textTransform: "uppercase",
+                                    padding: "1rem 1.25rem",
+                                    background: "var(--bg-subtle-surface)",
+                                    borderBottom: "1px solid var(--border-color)",
                                   }}
                                 >
-                                  Customer
-                                </span>
-                              )}
-                            </td>
-                            <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-                              {new Date(u.date_joined).toLocaleDateString("en-IN", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </td>
-                            <td style={{ textAlign: "right" }}>
-                              {isSelf ? (
-                                <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>Current User</span>
-                              ) : !u.is_staff ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handlePromote(u)}
-                                  className="btn btn-sm"
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    padding: "0.3rem 0.65rem",
-                                    background: "rgba(16, 185, 129, 0.12)",
-                                    color: "var(--accent-emerald)",
-                                    border: "1px solid rgba(16, 185, 129, 0.25)",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "0.3rem",
-                                  }}
-                                >
-                                  <UserCheck size={13} />
-                                  <span>Promote</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDemote(u)}
-                                  className="btn btn-sm"
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    padding: "0.3rem 0.65rem",
-                                    background: "rgba(244, 63, 94, 0.12)",
-                                    color: "var(--accent-rose)",
-                                    border: "1px solid rgba(244, 63, 94, 0.25)",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "0.3rem",
-                                  }}
-                                >
-                                  <UserX size={13} />
-                                  <span>Demote</span>
-                                </button>
-                              )}
-                            </td>
-                          </tr>
+                                  {renderUserActivityPanel(u)}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
 
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                          <td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
                             No users found matching query.
                           </td>
                         </tr>
@@ -1719,7 +2573,7 @@ const Admin = () => {
                 <div style={{ overflowX: "auto" }}>
                   <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                     <thead>
-                      <tr style={{ background: "rgba(255, 255, 255, 0.02)", borderBottom: "1px solid var(--border-color)" }}>
+                      <tr style={{ background: "var(--bg-subtle-surface)", borderBottom: "1px solid var(--border-color)" }}>
                         <th style={{ width: 65, padding: "0.85rem 1rem", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
                           ID
                         </th>
@@ -1851,7 +2705,7 @@ const Admin = () => {
                                     display: "inline-flex",
                                     alignItems: "center",
                                     gap: "0.3rem",
-                                    background: "rgba(255, 255, 255, 0.04)",
+                                    background: "var(--bg-subtle-surface)",
                                     border: "1px solid var(--border-color)",
                                     borderRadius: "6px",
                                     padding: "0.25rem 0.55rem",
@@ -2187,6 +3041,530 @@ const Admin = () => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 6. 30-DAY / MONTHLY OPERATIONAL REPORTS (ADMIN ONLY) */}
+        {activeTab === "reports" && (
+          <div>
+            {/* Header & Period / Download Controls */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: "1.35rem",
+                flexWrap: "wrap",
+                gap: "1rem",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                  <h1 style={{ fontSize: "1.6rem", fontWeight: 800, margin: 0, fontFamily: "var(--font-heading)" }}>
+                    30-Day / Monthly Operational Reports
+                  </h1>
+                  <span className="badge badge-cyan" style={{ fontSize: "0.7rem", textTransform: "uppercase" }}>
+                    Admin Exclusive
+                  </span>
+                </div>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: "0.3rem 0 0" }}>
+                  Every 30-day cycle report is generated exclusively for administrators and stored in your device files.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                {/* Period Selector */}
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <Calendar
+                    size={15}
+                    style={{
+                      position: "absolute",
+                      left: "0.75rem",
+                      color: "var(--accent-cyan)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <select
+                    value={reportPeriod}
+                    onChange={(e) => setReportPeriod(e.target.value)}
+                    style={{
+                      padding: "0.55rem 0.85rem 0.55rem 2.25rem",
+                      borderRadius: "10px",
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--border-color)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.84rem",
+                      fontWeight: 600,
+                      outline: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {(reportData?.available_periods || [
+                      { key: "30d", label: "Rolling Last 30 Days" },
+                    ]).map((p) => (
+                      <option key={p.key} value={p.key}>
+                        {p.label}
+                      </option>
+                    ))}
+                    <option value="all">All-Time Cumulative Summary</option>
+                  </select>
+                </div>
+
+                {/* Download CSV (Excel) */}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReportFile("csv")}
+                  disabled={reportDownloading !== ""}
+                  className="btn btn-primary btn-sm"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.55rem 0.95rem",
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  <Download size={14} />
+                  <span>
+                    {reportDownloading === `csv_${reportPeriod}`
+                      ? "Saving CSV..."
+                      : "Download CSV (Excel)"}
+                  </span>
+                </button>
+
+                {/* Download HTML Report File */}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadReportFile("html")}
+                  disabled={reportDownloading !== ""}
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.55rem 0.9rem",
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  <FileText size={14} />
+                  <span>
+                    {reportDownloading === `html_${reportPeriod}`
+                      ? "Saving HTML..."
+                      : "Download HTML Report"}
+                  </span>
+                </button>
+
+                {/* Print / Save as PDF */}
+                <button
+                  type="button"
+                  onClick={handlePrintReportPdf}
+                  disabled={reportDownloading !== ""}
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.55rem 0.9rem",
+                    fontSize: "0.82rem",
+                  }}
+                >
+                  <Printer size={14} />
+                  <span>Print / Save PDF</span>
+                </button>
+
+                {/* Refresh */}
+                <button
+                  type="button"
+                  onClick={() => fetchMonthlyReport(reportPeriod)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: "0.55rem 0.7rem" }}
+                  title="Regenerate & sync report to device files"
+                >
+                  <RefreshCw size={14} className={reportLoading ? "spinner" : ""} />
+                </button>
+              </div>
+            </div>
+
+            {reportLoading ? (
+              <div style={{ textAlign: "center", padding: "3.5rem", color: "var(--text-secondary)" }}>
+                <RefreshCw size={26} className="spinner" style={{ margin: "0 auto 0.6rem" }} />
+                <div>Compiling 30-day operational report & syncing to device files...</div>
+              </div>
+            ) : reportData ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {/* Device Storage & Report Metadata Card */}
+                <div
+                  className="card-panel"
+                  style={{
+                    padding: "1.15rem 1.35rem",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    background: "rgba(16, 185, 129, 0.05)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "1rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.85rem" }}>
+                    <div
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: "10px",
+                        background: "rgba(16, 185, 129, 0.16)",
+                        color: "var(--accent-emerald)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        marginTop: "0.1rem",
+                      }}
+                    >
+                      <FolderOpen size={19} />
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: "0.92rem" }}>
+                          {reportData.report_meta?.period_label}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.73rem",
+                            padding: "0.15rem 0.5rem",
+                            borderRadius: "6px",
+                            background: "rgba(6, 182, 212, 0.12)",
+                            color: "var(--accent-cyan)",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {reportData.report_meta?.report_id}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "0.79rem", color: "var(--text-secondary)", marginTop: "0.3rem" }}>
+                        Stored on Device Folder:{" "}
+                        <code
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            color: "var(--accent-emerald)",
+                            background: "var(--bg-subtle-surface)",
+                            border: "1px solid var(--border-subtle)",
+                            padding: "0.12rem 0.45rem",
+                            borderRadius: "5px",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          {reportData.report_meta?.saved_directory}
+                        </code>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: "0.77rem", color: "var(--text-muted)", textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                    <div>
+                      Generated:{" "}
+                      {reportData.report_meta?.generated_at
+                        ? new Date(reportData.report_meta.generated_at).toLocaleString("en-IN")
+                        : "—"}
+                    </div>
+                    <div style={{ marginTop: "0.2rem", color: "var(--text-secondary)" }}>
+                      Active File: <strong>{reportData.report_meta?.saved_csv_filename}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1. 30-Day Executive KPI Cards */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: "1rem",
+                  }}
+                >
+                  {[
+                    {
+                      label: "New Users (30d)",
+                      val: reportData.summary?.period?.new_users ?? 0,
+                      sub: `Cumulative Users: ${reportData.summary?.cumulative?.total_users ?? 0}`,
+                      color: "var(--accent-cyan)",
+                      icon: Users,
+                    },
+                    {
+                      label: "Products Added (30d)",
+                      val: reportData.summary?.period?.new_products ?? 0,
+                      sub: `Total Catalog: ${reportData.summary?.cumulative?.total_products ?? 0}`,
+                      color: "var(--accent-emerald)",
+                      icon: Package,
+                    },
+                    {
+                      label: "Wishlist Saves (30d)",
+                      val: reportData.summary?.period?.wishlists_added ?? 0,
+                      sub: `Total Wishlists: ${reportData.summary?.cumulative?.total_wishlists ?? 0}`,
+                      color: "var(--accent-rose)",
+                      icon: Heart,
+                    },
+                    {
+                      label: "Price Alerts (30d)",
+                      val: reportData.summary?.period?.alerts_created ?? 0,
+                      sub: `Target Met: ${reportData.summary?.period?.alerts_triggered ?? 0} | Total: ${reportData.summary?.cumulative?.total_alerts ?? 0}`,
+                      color: "var(--accent-amber)",
+                      icon: Bell,
+                    },
+                    {
+                      label: "URL Analyses (30d)",
+                      val: reportData.summary?.period?.analyses_total ?? 0,
+                      sub: `Completed: ${reportData.summary?.period?.analyses_completed ?? 0} | Total: ${reportData.summary?.cumulative?.total_analyses ?? 0}`,
+                      color: "var(--accent-purple)",
+                      icon: Activity,
+                    },
+                    {
+                      label: "Store Offers Updated",
+                      val: reportData.summary?.period?.new_offers ?? 0,
+                      sub: `Total Store Offers: ${reportData.summary?.cumulative?.total_offers ?? 0}`,
+                      color: "var(--accent-cyan)",
+                      icon: Tag,
+                    },
+                  ].map((item, idx) => {
+                    const IconComp = item.icon;
+                    return (
+                      <div key={idx} className="card-panel" style={{ padding: "1.15rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.55rem" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                            {item.label}
+                          </span>
+                          <IconComp size={16} style={{ color: item.color }} />
+                        </div>
+                        <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>
+                          {item.val}
+                        </div>
+                        <div style={{ fontSize: "0.74rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+                          {item.sub}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 2. On-Device Saved Report Files Archive (`backend/reports/`) */}
+                <div className="card-panel" style={{ padding: "1.25rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.9rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                        <FolderOpen size={17} style={{ color: "var(--accent-cyan)" }} />
+                        Saved 30-Day Report Files on This Device
+                      </h3>
+                      <p style={{ margin: "0.2rem 0 0", fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                        Files automatically written to local device disk and available for instant browser download.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th>Report Filename</th>
+                          <th>Format</th>
+                          <th>Size</th>
+                          <th>Device File Path</th>
+                          <th>Last Updated</th>
+                          <th style={{ textAlign: "right" }}>Download</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(reportData.archived_files || []).map((f, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-mono)", fontSize: "0.82rem" }}>
+                              {f.filename}
+                            </td>
+                            <td>
+                              <span
+                                className={f.filename.endsWith(".csv") ? "badge badge-emerald" : "badge badge-cyan"}
+                                style={{ fontSize: "0.7rem" }}
+                              >
+                                {f.format}
+                              </span>
+                            </td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                              {f.size_kb} KB
+                            </td>
+                            <td
+                              style={{
+                                fontFamily: "var(--font-mono)",
+                                fontSize: "0.74rem",
+                                color: "var(--text-muted)",
+                                maxWidth: 320,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={f.full_path}
+                            >
+                              {f.full_path}
+                            </td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.76rem", color: "var(--text-muted)" }}>
+                              {f.modified_at ? new Date(f.modified_at).toLocaleString("en-IN") : "—"}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadReportFile("", f.filename)}
+                                disabled={reportDownloading === f.filename}
+                                className="btn btn-secondary btn-sm"
+                                style={{
+                                  fontSize: "0.74rem",
+                                  padding: "0.28rem 0.65rem",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.3rem",
+                                }}
+                              >
+                                <Download size={12} />
+                                <span>{reportDownloading === f.filename ? "Saving..." : "Save to Device"}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 3. Marketplace Breakdown & Category Distribution (2-Column Grid) */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.25rem" }}>
+                  {/* Marketplace Store Breakdown */}
+                  <div className="card-panel" style={{ padding: "1.25rem" }}>
+                    <h3 style={{ margin: "0 0 0.85rem", fontSize: "0.98rem", fontWeight: 800 }}>
+                      Multi-Marketplace Store Breakdown
+                    </h3>
+                    <div style={{ overflowX: "auto" }}>
+                      <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            <th>Store</th>
+                            <th>Offers</th>
+                            <th>In Stock</th>
+                            <th>Avg Price</th>
+                            <th>Lowest</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(reportData.marketplace_breakdown || []).map((m, idx) => (
+                            <tr key={idx}>
+                              <td>
+                                <PlatformBadge platform={m.store_name} />
+                              </td>
+                              <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{m.offers_count}</td>
+                              <td style={{ fontFamily: "var(--font-mono)", color: "var(--accent-emerald)" }}>{m.in_stock_count}</td>
+                              <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem" }}>
+                                ₹{Number(m.avg_price || 0).toLocaleString("en-IN")}
+                              </td>
+                              <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "var(--accent-cyan)", fontWeight: 700 }}>
+                                ₹{Number(m.min_price || 0).toLocaleString("en-IN")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Category Distribution */}
+                  <div className="card-panel" style={{ padding: "1.25rem" }}>
+                    <h3 style={{ margin: "0 0 0.85rem", fontSize: "0.98rem", fontWeight: 800 }}>
+                      Catalog Category Distribution
+                    </h3>
+                    <div style={{ overflowX: "auto" }}>
+                      <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            <th>Category</th>
+                            <th>Products Tracked</th>
+                            <th>Store Offers</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(reportData.category_breakdown || []).map((c, idx) => (
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{c.category}</td>
+                              <td style={{ fontFamily: "var(--font-mono)", color: "var(--accent-cyan)", fontWeight: 700 }}>
+                                {c.products_count}
+                              </td>
+                              <td style={{ fontFamily: "var(--font-mono)" }}>{c.offers_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Shopper Wishlist, Price Alerts & Analyses Summary Table */}
+                <div className="card-panel" style={{ padding: "1.25rem" }}>
+                  <h3 style={{ margin: "0 0 0.85rem", fontSize: "0.98rem", fontWeight: 800 }}>
+                    Shopper Accounts — Wishlist, Price Alerts & Analyses Breakdown
+                  </h3>
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th>UID</th>
+                          <th>Username</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Wishlist (30d / Total)</th>
+                          <th>Price Alerts (30d / Total)</th>
+                          <th>Analyses (30d / Total)</th>
+                          <th>Joined</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(reportData.user_activity || []).map((u) => (
+                          <tr key={u.id}>
+                            <td style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                              #{u.id}
+                            </td>
+                            <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{u.username}</td>
+                            <td style={{ color: "var(--text-secondary)", fontSize: "0.83rem" }}>{u.email}</td>
+                            <td>
+                              <span
+                                className={
+                                  u.role === "Superuser"
+                                    ? "badge badge-purple"
+                                    : u.role === "Staff Operator"
+                                    ? "badge badge-cyan"
+                                    : "badge"
+                                }
+                                style={{ fontSize: "0.7rem" }}
+                              >
+                                {u.role}
+                              </span>
+                            </td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "var(--accent-rose)", fontWeight: 700 }}>
+                              {u.period_wishlists} in 30d / {u.wishlist_count} total
+                            </td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "var(--accent-amber)", fontWeight: 700 }}>
+                              {u.period_alerts} in 30d / {u.alerts_count} total
+                            </td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem", color: "var(--accent-cyan)" }}>
+                              {u.period_analyses} in 30d / {u.analyses_count} total
+                            </td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                              {u.date_joined ? new Date(u.date_joined).toLocaleDateString("en-IN") : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ color: "var(--text-muted)", padding: "2rem", textAlign: "center" }}>
+                Unable to load 30-day report data.
               </div>
             )}
           </div>

@@ -196,7 +196,7 @@ const ForgotPassword = () => {
           style={{
             display: "flex",
             alignItems: "center",
-            background: "rgba(255, 255, 255, 0.03)",
+            background: "var(--bg-subtle-surface)",
             borderRadius: "10px",
             padding: "0.35rem",
             marginBottom: "1.5rem",
@@ -644,7 +644,7 @@ const ForgotPassword = () => {
             marginTop: "1.25rem",
             padding: "0.75rem",
             borderRadius: "8px",
-            background: "rgba(255, 255, 255, 0.02)",
+            background: "var(--bg-subtle-surface)",
             border: "1px solid var(--border-subtle)",
             display: "flex",
             alignItems: "flex-start",

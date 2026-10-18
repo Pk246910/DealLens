@@ -6,7 +6,7 @@ import process from 'node:process'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  cacheDir: path.resolve(process.env.TEMP || '/tmp', 'shopsmart-vite-cache'),
+  cacheDir: path.resolve(process.env.TEMP || '/tmp', 'deallens-vite-cache'),
   server: {
     host: true,
     port: 5173,

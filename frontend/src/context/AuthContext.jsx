@@ -5,14 +5,14 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("shopsmart_user");
+    const saved = localStorage.getItem("deallens_user");
     return saved ? JSON.parse(saved) : null;
   });
   const [guestId] = useState(() => {
-    let gid = localStorage.getItem("shopsmart_guest_id");
+    let gid = localStorage.getItem("deallens_guest_id");
     if (!gid) {
       gid = "guest_" + crypto.randomUUID();
-      localStorage.setItem("shopsmart_guest_id", gid);
+      localStorage.setItem("deallens_guest_id", gid);
     }
     return gid;
   });
@@ -36,9 +36,9 @@ export const AuthProvider = ({ children }) => {
       throw err;
     }
 
-    localStorage.setItem("shopsmart_access", access);
-    localStorage.setItem("shopsmart_refresh", refresh);
-    localStorage.setItem("shopsmart_user", JSON.stringify(profile));
+    localStorage.setItem("deallens_access", access);
+    localStorage.setItem("deallens_refresh", refresh);
+    localStorage.setItem("deallens_user", JSON.stringify(profile));
     setUser(profile);
     return { ...res.data, user: profile };
   };
@@ -46,10 +46,10 @@ export const AuthProvider = ({ children }) => {
   const register = async (username, email, password) => {
     const res = await API.post("/users/register/", { username, email, password });
     if (res.data.tokens) {
-      localStorage.setItem("shopsmart_access", res.data.tokens.access);
-      localStorage.setItem("shopsmart_refresh", res.data.tokens.refresh);
+      localStorage.setItem("deallens_access", res.data.tokens.access);
+      localStorage.setItem("deallens_refresh", res.data.tokens.refresh);
       setUser(res.data.user);
-      localStorage.setItem("shopsmart_user", JSON.stringify(res.data.user));
+      localStorage.setItem("deallens_user", JSON.stringify(res.data.user));
     } else {
       throw new Error("Registration succeeded but no tokens returned. Please log in.");
     }
@@ -58,19 +58,19 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("shopsmart_access");
-    localStorage.removeItem("shopsmart_refresh");
-    localStorage.removeItem("shopsmart_user");
+    localStorage.removeItem("deallens_access");
+    localStorage.removeItem("deallens_refresh");
+    localStorage.removeItem("deallens_user");
   };
 
   // On mount, try to restore user from token
   useEffect(() => {
-    const token = localStorage.getItem("shopsmart_access");
+    const token = localStorage.getItem("deallens_access");
     if (token && !user) {
       API.get("/users/me/")
         .then((res) => {
           setUser(res.data);
-          localStorage.setItem("shopsmart_user", JSON.stringify(res.data));
+          localStorage.setItem("deallens_user", JSON.stringify(res.data));
         })
         .catch(() => {});
     }
@@ -80,12 +80,12 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const handleLogout = () => {
       setUser(null);
-      localStorage.removeItem("shopsmart_access");
-      localStorage.removeItem("shopsmart_refresh");
-      localStorage.removeItem("shopsmart_user");
+      localStorage.removeItem("deallens_access");
+      localStorage.removeItem("deallens_refresh");
+      localStorage.removeItem("deallens_user");
     };
-    window.addEventListener("shopsmart:logout", handleLogout);
-    return () => window.removeEventListener("shopsmart:logout", handleLogout);
+    window.addEventListener("deallens:logout", handleLogout);
+    return () => window.removeEventListener("deallens:logout", handleLogout);
   }, []);
 
   return (

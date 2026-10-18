@@ -1,4 +1,4 @@
-# ShopSmart Real-Data Extraction Pipeline
+# DealLens Real-Data Extraction Pipeline
 
 Layered pipeline in `backend/products/services/extract/`. No technique is
 trusted alone; nothing is ever fabricated — unverifiable fields are `None`.

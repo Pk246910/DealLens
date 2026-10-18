@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import React, { Suspense, lazy, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import "./App.css";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -42,6 +42,36 @@ function AdminProtectedRoute({ children }) {
   return children;
 }
 
+function AnimatedRoutes() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [location.pathname]);
+
+  return (
+    <div key={location.pathname} className="dl-route-transition" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <Routes location={location}>
+        <Route path="/" element={<Home />} />
+        <Route path="/recent" element={<Recent />} />
+        <Route path="/products" element={<Navigate to="/" replace />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+        <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminProtectedRoute><Admin /></AdminProtectedRoute>} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/analysis/:id" element={<AnalysisPage />} />
+        <Route path="/report/:id" element={<DecisionReport />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </div>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -71,35 +101,23 @@ function App() {
                       style={{
                         flex: 1,
                         display: "flex",
+                        flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
+                        gap: "0.85rem",
                         padding: "4rem 1rem",
                         color: "var(--text-secondary)",
                         fontSize: "0.95rem",
                         fontWeight: 600,
+                        animation: "fadeIn 0.25s ease",
                       }}
                     >
-                      Loading...
+                      <div className="spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
+                      <span>Loading DealLens Intelligence...</span>
                     </div>
                   }
                 >
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/recent" element={<Recent />} />
-                    <Route path="/products" element={<Navigate to="/" replace />} />
-                    <Route path="/product/:id" element={<ProductDetail />} />
-                    <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
-                    <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                    <Route path="/admin/login" element={<AdminLogin />} />
-                    <Route path="/admin" element={<AdminProtectedRoute><Admin /></AdminProtectedRoute>} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/analysis/:id" element={<AnalysisPage />} />
-                    <Route path="/report/:id" element={<DecisionReport />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
+                  <AnimatedRoutes />
                 </Suspense>
               </ErrorBoundary>
             </main>

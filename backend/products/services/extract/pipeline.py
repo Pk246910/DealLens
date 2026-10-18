@@ -47,6 +47,7 @@ def _cache_set(key: str, value, minutes: int) -> None:
 def extract_product(url: str, platform: str | None = None,
                     refresh: bool = False):
     """Run the layered pipeline. Always returns an ExtractedProduct."""
+    from .adapters.universal import UniversalExtractor
     from .base import CONFIDENCE_FAILED, ExtractedProduct
     from .registry import detect_platform, get_adapter
 
@@ -55,6 +56,8 @@ def extract_product(url: str, platform: str | None = None,
         platform = detected["platform"] or ""
 
     adapter = get_adapter(platform or url)
+    if not adapter and platform:
+        adapter = UniversalExtractor(platform=platform)
     if not adapter:
         return ExtractedProduct(
             platform=platform or "",

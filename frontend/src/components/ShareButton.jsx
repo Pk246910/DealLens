@@ -26,7 +26,7 @@ const ShareButton = ({ title, url, price }) => {
   const firstItemRef = useRef(null);
 
   const shareUrl = url || `${window.location.origin}${window.location.pathname}`;
-  const shareText = `${title}${price ? ` - ₹${Number(price).toLocaleString("en-IN")}` : ""} | Found on ShopSmart`;
+  const shareText = `${title}${price ? ` - ₹${Number(price).toLocaleString("en-IN")}` : ""} | Found on DealLens`;
 
   useEffect(() => {
     const handleClick = (e) => {

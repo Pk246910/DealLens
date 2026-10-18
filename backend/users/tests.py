@@ -1,4 +1,4 @@
-"""Comprehensive tests for the ShopSmart users app.
+"""Comprehensive tests for the DealLens users app.
 
 Run with:  python manage.py test users
 """
@@ -448,3 +448,85 @@ class TokenRefreshTests(TestCase):
     def test_token_refresh_invalid(self):
         res = self.client.post("/api/users/token/refresh/", {"refresh": "invalidtoken"}, format="json")
         self.assertIn(res.status_code, (401, 429))
+
+
+class AdminUserActivityTests(TestCase):
+    def setUp(self):
+        from products.models import Wishlist
+        self.client = APIClient()
+        self.admin = User.objects.create_user(
+            username="admininspector", email="admin@test.com", password="pass12345", is_staff=True
+        )
+        self.shopper = User.objects.create_user(
+            username="shopper1", email="shopper@test.com", password="pass12345"
+        )
+        self.product = Product.objects.create(
+            title="Sony WH-1000XM5", brand="Sony", category="Audio"
+        )
+        Wishlist.objects.create(user=self.shopper, product=self.product)
+        PriceAlert.objects.create(user=self.shopper, product=self.product, target_price=24999)
+
+    def test_admin_can_view_user_wishlist_and_alerts(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get(f"/api/users/{self.shopper.pk}/activity/")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["user"]["username"], "shopper1")
+        self.assertEqual(data["user"]["wishlist_count"], 1)
+        self.assertEqual(data["user"]["alerts_count"], 1)
+        self.assertEqual(len(data["wishlist"]), 1)
+        self.assertEqual(data["wishlist"][0]["product_details"]["title"], "Sony WH-1000XM5")
+        self.assertEqual(len(data["alerts"]), 1)
+        self.assertEqual(float(data["alerts"][0]["target_price"]), 24999.0)
+
+    def test_non_admin_cannot_view_user_activity(self):
+        self.client.force_authenticate(user=self.shopper)
+        res = self.client.get(f"/api/users/{self.shopper.pk}/activity/")
+        self.assertEqual(res.status_code, 403)
+
+
+class AdminMonthlyReportTests(TestCase):
+    def setUp(self):
+        from products.models import Wishlist
+        self.client = APIClient()
+        self.admin = User.objects.create_user(
+            username="reportadmin", email="radmin@test.com", password="pass12345", is_staff=True
+        )
+        self.shopper = User.objects.create_user(
+            username="reportshopper", email="rshopper@test.com", password="pass12345"
+        )
+        self.product = Product.objects.create(
+            title="Apple iPhone 16 Pro", brand="Apple", category="Smartphones"
+        )
+        Wishlist.objects.create(user=self.shopper, product=self.product)
+        PriceAlert.objects.create(user=self.shopper, product=self.product, target_price=119900)
+
+    def test_non_admin_forbidden_monthly_report(self):
+        self.client.force_authenticate(user=self.shopper)
+        res = self.client.get("/api/users/admin-monthly-report/")
+        self.assertEqual(res.status_code, 403)
+
+    def test_admin_monthly_report_json_and_disk_persistence(self):
+        import os
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get("/api/users/admin-monthly-report/?period=30d")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("report_meta", data)
+        self.assertIn("summary", data)
+        self.assertEqual(data["summary"]["period"]["wishlists_added"], 1)
+        self.assertEqual(data["summary"]["period"]["alerts_created"], 1)
+        self.assertTrue(os.path.isfile(data["report_meta"]["saved_csv_path"]))
+        self.assertTrue(os.path.isfile(data["report_meta"]["saved_html_path"]))
+
+    def test_admin_monthly_report_csv_and_html_download(self):
+        self.client.force_authenticate(user=self.admin)
+        csv_res = self.client.get("/api/users/admin-monthly-report/?period=30d&export=csv")
+        self.assertEqual(csv_res.status_code, 200)
+        self.assertIn("attachment; filename=", csv_res["Content-Disposition"])
+        self.assertIn("DEALLENS", csv_res.content.decode("utf-8-sig"))
+
+        html_res = self.client.get("/api/users/admin-monthly-report/?period=30d&export=html")
+        self.assertEqual(html_res.status_code, 200)
+        self.assertIn("attachment; filename=", html_res["Content-Disposition"])
+        self.assertIn("Deal<span>Lens</span>", html_res.content.decode("utf-8"))

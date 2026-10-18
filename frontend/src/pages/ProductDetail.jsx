@@ -21,10 +21,10 @@ import {
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import ShareButton from "../components/ShareButton";
-import PlatformBadge from "../components/PlatformBadge";
+import MarketplaceComparisonCards from "../components/MarketplaceComparisonCards";
 import { SkeletonProductDetail } from "../components/Skeleton";
 import { getProductImage, handleImageError } from "../utils/images";
-import { getPlatformColor } from "../utils/platforms";
+import { getPlatformColor, getOfficialStoreUrl } from "../utils/platforms";
 import toast from "react-hot-toast";
 
 const CHART_COLORS = {
@@ -93,7 +93,7 @@ const ProductDetail = () => {
   useEffect(() => {
     if (!id) return;
     setHistoryLoading(true);
-    API.get(`/products/${id}/history/`)
+    API.get(`/products/${id}/history/`, { params: { autoseed: "1" } })
       .then((res) => setHistory(res.data || []))
       .catch(() => {})
       .finally(() => setHistoryLoading(false));
@@ -207,11 +207,6 @@ const ProductDetail = () => {
       existing[cur.store_name] = Number(cur.price);
       return acc;
     }, []);
-
-  const lowestPrice =
-    offers.length > 0
-      ? Math.min(...offers.map((o) => Number(o.current_price)))
-      : 0;
 
   return (
     <div className="page-container" style={{ paddingTop: "2rem" }}>
@@ -374,9 +369,13 @@ const ProductDetail = () => {
 
           {/* Action CTAs */}
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "1rem" }}>
-            {bestOffer?.product_url && (
+            {bestOffer && (
               <a
-                href={bestOffer.product_url}
+                href={getOfficialStoreUrl(
+                  bestOffer.store_name,
+                  product.title,
+                  bestOffer.product_url
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-success btn-md"
@@ -403,7 +402,7 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* 2. Multi-Store Price Comparison Table */}
+      {/* 2. Multi-Store Price Comparison Cards */}
       {offers.length > 0 && (
         <section className="card-panel" style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -417,144 +416,10 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          <div className="table-responsive">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem", minWidth: 700 }}>
-              <thead>
-                <tr style={{ color: "var(--text-muted)", borderBottom: "2px solid var(--border-color)", textAlign: "left" }}>
-                  <th style={{ padding: "0.85rem 1rem" }}>Store</th>
-                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Price</th>
-                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Original MRP</th>
-                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Discount</th>
-                  <th style={{ padding: "0.85rem 1rem", textAlign: "center" }}>Delivery</th>
-                  <th style={{ padding: "0.85rem 1rem" }}>Coupon</th>
-                  <th style={{ padding: "0.85rem 1rem", textAlign: "center" }}>Stock</th>
-                  <th style={{ padding: "0.85rem 1rem", textAlign: "right" }}>Store Link</th>
-                </tr>
-              </thead>
-              <tbody>
-                {offers.map((o, i) => {
-                  const isBest = Number(o.current_price) === lowestPrice && offers.length > 1;
-
-                  return (
-                    <tr
-                      key={o.id || i}
-                      style={{
-                        background: isBest ? "rgba(16, 185, 129, 0.08)" : "transparent",
-                        borderBottom: "1px solid var(--border-subtle)",
-                      }}
-                    >
-                      <td style={{ padding: "0.85rem 1rem", fontWeight: 700 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
-                          <PlatformBadge platform={o.store_name} size="sm" />
-                          {isBest && (
-                            <span
-                              style={{
-                                background: "var(--accent-green)",
-                                color: "#fff",
-                                fontSize: "0.62rem",
-                                fontWeight: 800,
-                                padding: "0.1rem 0.4rem",
-                                borderRadius: 999,
-                              }}
-                            >
-                              LOWEST
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td
-                        style={{
-                          padding: "0.85rem 1rem",
-                          textAlign: "right",
-                          fontWeight: 800,
-                          fontFamily: "var(--font-mono)",
-                          color: isBest ? "var(--accent-green)" : "var(--text-primary)",
-                        }}
-                      >
-                        ₹{Number(o.current_price).toLocaleString("en-IN")}
-                      </td>
-
-                      <td
-                        style={{
-                          padding: "0.85rem 1rem",
-                          textAlign: "right",
-                          color: "var(--text-muted)",
-                          textDecoration: o.original_price > o.current_price ? "line-through" : "none",
-                          fontFamily: "var(--font-mono)",
-                        }}
-                      >
-                        {o.original_price > o.current_price
-                          ? `₹${Number(o.original_price).toLocaleString("en-IN")}`
-                          : "—"}
-                      </td>
-
-                      <td
-                        style={{
-                          padding: "0.85rem 1rem",
-                          textAlign: "right",
-                          color: o.discount_percent > 0 ? "var(--accent-green)" : "var(--text-muted)",
-                          fontWeight: 700,
-                          fontFamily: "var(--font-mono)",
-                        }}
-                      >
-                        {o.discount_percent > 0 ? `${o.discount_percent}%` : "—"}
-                      </td>
-
-                      <td style={{ padding: "0.85rem 1rem", textAlign: "center", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                        {o.delivery_days ? `${o.delivery_days} day${o.delivery_days > 1 ? "s" : ""}` : "Standard"}
-                      </td>
-
-                      <td style={{ padding: "0.85rem 1rem" }}>
-                        {o.coupon_code ? (
-                          <span
-                            style={{
-                              fontSize: "0.75rem",
-                              padding: "0.15rem 0.45rem",
-                              background: "rgba(245, 158, 11, 0.12)",
-                              color: "var(--accent-amber)",
-                              borderRadius: "4px",
-                              fontWeight: 700,
-                              fontFamily: "var(--font-mono)",
-                            }}
-                          >
-                            {o.coupon_code}
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--text-muted)" }}>—</span>
-                        )}
-                      </td>
-
-                      <td style={{ padding: "0.85rem 1rem", textAlign: "center" }}>
-                        {o.in_stock === false ? (
-                          <span style={{ color: "var(--accent-rose)", fontWeight: 700, fontSize: "0.8rem" }}>Out</span>
-                        ) : (
-                          <span style={{ color: "var(--accent-green)", fontWeight: 700, fontSize: "0.8rem" }}>In Stock</span>
-                        )}
-                      </td>
-
-                      <td style={{ padding: "0.85rem 1rem", textAlign: "right" }}>
-                        {o.product_url ? (
-                          <a
-                            href={o.product_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-secondary btn-sm"
-                            style={{ display: "inline-flex", gap: "0.35rem", fontSize: "0.78rem" }}
-                          >
-                            <span>Buy</span>
-                            <ExternalLink size={12} />
-                          </a>
-                        ) : (
-                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Unavailable</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <MarketplaceComparisonCards
+            listings={offers}
+            productTitle={product.title}
+          />
         </section>
       )}
 

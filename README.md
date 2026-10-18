@@ -1,4 +1,4 @@
-# ⚡ ShopSmart — AI-Powered E-Commerce Price Comparison & Decision-Support Platform
+# 🔍 DealLens — AI-Powered Multi-Marketplace Price Comparison & Deal Decision-Support Platform
 
 <div align="center">
 
@@ -22,9 +22,11 @@
 
 ## 📌 Project Overview
 
-**ShopSmart** is a production-grade, full-stack e-commerce decision intelligence platform designed to eliminate buyer hesitation and price fragmentation across Indian online marketplaces.
+**DealLens** is a production-grade, full-stack e-commerce decision intelligence platform designed to eliminate buyer hesitation and price fragmentation across Indian online marketplaces.
 
-Traditional price checkers only compare raw prices on a single store. **ShopSmart** goes beyond simple numbers: it ingests real-time product links across **8 major Indian e-commerce platforms**, executes an **8-factor weighted deal decision algorithm**, compares cross-store alternatives, and delivers an explainable **Decision Report** complete with multi-store price history, radar trade-off charts, and transparent pros/cons.
+Traditional price checkers only compare raw prices on a single store. **DealLens** goes beyond simple numbers: it ingests real-time product links across **8 major Indian e-commerce platforms**, executes an **8-factor weighted deal decision algorithm**, compares cross-store alternatives through interactive **Marketplace Comparison Cards**, highlights the cheapest store, provides one-click redirects to official merchant stores, and delivers an explainable **Decision Report** complete with multi-store price history, radar trade-off charts, and transparent pros/cons.
+
+In addition, DealLens equips platform administrators with an **Admin Portal** featuring live telemetry, an interactive **User Activity Inspector** (wishlists & alerts), and an automated **30-Day / Monthly Operational Report** with automated device file archiving (`.csv` and `.html` / PDF).
 
 Developed as a **BCA Final Year Project** by **Punit Kumar**.
 
@@ -34,7 +36,7 @@ Developed as a **BCA Final Year Project** by **Punit Kumar**.
 
 ### 🛒 1. 8-Marketplace Real-Time Extraction
 - **Supported Platforms:** Amazon India, Flipkart, Myntra, AJIO, Meesho, Croma, Reliance Digital, and Tata CLiQ.
-- Robust multi-platform extraction pipeline with metadata parsing, currency normalization, stock detection, and image resolution fallbacks.
+- Universal scraper architecture with schema parsing, metadata fallback, currency normalization, stock availability detection, and broken image resolution.
 
 ### 🧠 2. 8-Factor Explainable Deal Decision Engine
 - Deterministic, explainable 0–100 **Deal Score** calculation based on 8 weighted consumer dimensions:
@@ -48,34 +50,49 @@ Developed as a **BCA Final Year Project** by **Punit Kumar**.
   8. **Price Freshness (5%)** — Recency of scraped price data.
 - Generates clear **Pros, Cons, and Buying Recommendations** without slow or hallucinating third-party LLM dependencies.
 
-### 📊 3. Comprehensive Decision Report (`/report/:id`)
-- **Executive Deal Breakdown:** Best marketplace recommendation with total potential savings.
+### 💳 3. Interactive Marketplace Comparison Cards
+- **Cheapest Store Highlight:** The lowest-priced store is prominently highlighted with an animated green gradient border, glowing pulse, and a shimmer badge (`🏆 CHEAPEST PRICE • SAVE UP TO ₹X`).
+- **Deep-Dive Store Drawer:** Clicking on any marketplace card expands a detailed breakdown panel displaying:
+  - Official marketplace domain (e.g. `amazon.in`, `flipkart.com`, `croma.com`).
+  - Net effective price after coupons with MRP savings.
+  - Delivery timeframes, stock availability, manufacturer warranty, and return policies.
+  - Multi-criteria score progress bars (`Price Value`, `Customer Rating`, `Delivery Speed`, `Discount & Coupon`, `Store Reliability`).
+- **Official Store Redirection:** One-click `"Buy on <Platform>"` button redirects directly to the merchant's official product page.
+- **Selective Availability Summary:** Clear indicator displaying which marketplaces carry the item and which do not.
+
+### 📊 4. Comprehensive Decision Report (`/report/:id`)
+- **Executive Deal Breakdown:** Best marketplace recommendation with total potential savings and algorithmic verdict.
 - **Radar Trade-Off Matrix:** Multi-dimensional visualization across Rating, Price, Delivery, Seller Trust, and Warranty.
 - **Cross-Platform Price History:** 30-day zigzag price trends tracked across **all competing platforms**, not just Amazon.
 - **Printable Report:** Optimized printer styling for saving or exporting comparison reports as PDF.
-- **High-Contrast Dark & Light Themes:** WCAG-compliant contrast ensuring financial numbers, charts, and metrics remain crisp in any lighting mode.
 
-### 🕒 4. Recent Analyses & Telemetry Log (`/recent`)
+### 📅 5. Automated 30-Day / Monthly Operational Report (Admin Only)
+- **Automated Monthly Ingestion Audit:** Aggregates 30-day platform performance, total product ingestions, active users, wishlist saves, target price alerts, and platform distribution.
+- **Device File Archival:** Automatically saves generated reports directly to the host device disk under `backend/reports/` (`.csv` and `.html` formats) with unique report IDs and timestamps.
+- **Dual Export Modes:**
+  - **Download CSV:** Instant spreadsheet download for Excel or Google Sheets analysis (`/api/users/monthly-report/?download=csv`).
+  - **Print / PDF Report:** Styled HTML document ready for one-click browser printing or PDF archival (`/api/users/monthly-report/?download=html`).
+
+### 🛡️ 6. Dedicated Admin Portal & Live Telemetry (`/admin/login` & `/admin`)
+- **Strict Role Isolation:** Regular shoppers authenticate via consumer login (`/login`); platform administrators authenticate through a dedicated Admin Portal (`/admin/login`).
+- **Live Scraping Telemetry Log:** 4 live KPI cards (Total Scrapes, Amazon Ingestion, Cross-Market Alternatives, Unique Shoppers), searchable telemetry feed, and server-side pagination.
+- **User Activity Inspector:** Administrators can click on any user in the Users table to instantly inspect their **Saved Wishlist** and **Active Price Drop Alerts** with tabbed filters.
+- **User Access & Role Controls:** Superuser management, staff promotion/demotion, and instant account activation toggles.
+- **Product Catalog & Offers Registry:** Catalog search, deletion, live store prices, and discount inspection.
+
+### 🕒 7. Recent Analyses & Telemetry Log (`/recent`)
 - **Responsive 3-Column Display:** Adaptive grid with full-width container (`max-width: 1200px`) preventing row squishing.
 - **Tab Filtering:** Instant switching between **All Recent**, **Recently Analyzed**, and **Recently Viewed** items.
 - **Deal Score Tags:** Color-coded badges (Emerald: 75+, Amber: 50–74, Rose: <50) with strike-through original MRP.
 - **Quick Actions:** Direct shortcuts to deep-dive AI Deal Breakdown (`/analysis/:id`) and Multi-Store Decision Report (`/report/:id`).
-- **History Management:** 1-click history clearance with server-side synchronization.
 
-### 🛡️ 5. Dedicated Admin Portal & Telemetry Dashboard (`/admin/login` & `/admin`)
-- **Strict Role Isolation:** Regular shoppers authenticate via consumer login (`/login`); platform administrators authenticate through a dedicated, hardened Admin Portal (`/admin/login`) featuring a cyber-security minimalist dark/light design.
-- **Route Protection:** Built-in `AdminProtectedRoute` automatically halts unprivileged attempts with redirected state protection.
-- **Live Scraping Telemetry Log:**
-  - **4 Live KPI Cards:** Total Recorded Scrapes, Amazon Ingestion Proportion, Cross-Market Alternative Ingestions, and Unique Shoppers/Guest Sessions.
-  - **Live Feed Table:** 2-line clamped titles, platform badges, formatted guest badges (`👤 Guest #8c332e8f`), monospace timestamps, and direct action triggers.
-  - **Live Search & Platform Filters:** Filter telemetry by product title, store URL, or platform (All, Amazon, Flipkart, Croma).
-  - **Full Pagination Controls:** Server-side pagination with dynamic record count.
-- **User Access & Role Controls:** Superuser management, staff promotion/demotion, and instant account activation toggles.
-- **Product Catalog & Offers Registry:** Catalog search, deletion, live store prices, and discount inspection.
-
-### 🔔 6. Price Alerts & Dual-Mode Watchlist
+### 🔔 8. Price Alerts & Dual-Mode Watchlist
 - **Price Alerts (`/alerts`):** Set custom target price thresholds; the system flags when live platform prices fall below the threshold.
 - **Dual-Mode Watchlist (`/wishlist`):** Works for unregistered guests via browser session tracking (`X-Guest-ID`), seamlessly linking to user accounts upon registration or login.
+
+### 🎨 9. Full-Frontend Motion & Universal High-Contrast Themes
+- **Fluid Motion System:** Staggered panel cascades, route transitions, card hover sheens, button tactile physics, and modal popups (with `prefers-reduced-motion` compliance).
+- **Universal Light & Dark Mode:** Semantic CSS surface variable system (`--bg-surface`, `--bg-subtle-surface`, `--bg-banner-gradient`, `--bg-detail-gradient`) ensuring 100% WCAG-compliant contrast across banners, tables, forms, and charts.
 
 ---
 
@@ -84,12 +101,13 @@ Developed as a **BCA Final Year Project** by **Punit Kumar**.
 ```mermaid
 flowchart TD
     subgraph Client["Frontend Client (React 19 + Vite 8 on Vercel)"]
-        UI["Modern Responsive UI\n(Dark & Light Modes)"]
-        NAV["Navbar / Navigation"]
+        UI["Modern Responsive UI\n(Universal Dark & Light Modes)"]
+        NAV["Navbar & BrandLogo\n(Cart-Inside-Lens SVG)"]
         HOME["Home URL Analyzer (/)\nAnalysis Breakdown (/analysis/:id)"]
+        CARDS["Marketplace Comparison Cards\n(Cheapest Ribbon & Store Drawer)"]
         REPORT["Decision Report (/report/:id)\nRadar Matrix & Multi-Store History"]
         RECENT["Recent History (/recent)\n3-Column Grid & Status Pills"]
-        ADMIN_PAGE["Admin Dashboard (/admin)\nTelemetry KPIs & Access Control"]
+        ADMIN_PAGE["Admin Dashboard (/admin)\nTelemetry, Users, Products & Monthly Report"]
         AUTH_VIEWS["Auth Flow (/login, /register)\nAdmin Portal (/admin/login)"]
     end
 
@@ -105,11 +123,13 @@ flowchart TD
         EXTRACT["Multi-Store Ingestion Engine\n(8 Indian Marketplace Scrapers)"]
         AI_ENGINE["8-Factor Weighted Decision Engine\n(Deterministic Deal Score: 0-100)"]
         SCHEDULER["Price History & Alert Evaluator"]
+        REPORT_SVC["30-Day Operational Report Service\n(CSV/HTML Exporter & Disk Archival)"]
     end
 
     subgraph Data["Database & Persistence"]
         DB[("PostgreSQL / SQLite\n17 Relational Models")]
         CACHE[("Session & History Store\nGuest IDs & Audit Logs")]
+        DISK[("Device File Archival\nbackend/reports/*.csv & *.html")]
     end
 
     UI --> Gateway
@@ -117,8 +137,10 @@ flowchart TD
     REST --> EXTRACT
     REST --> AI_ENGINE
     REST --> SCHEDULER
+    REST --> REPORT_SVC
     REST --> DB
     REST --> CACHE
+    REPORT_SVC --> DISK
 ```
 
 ---
@@ -131,21 +153,22 @@ flowchart TD
 | **Hosting & CDN** | **Vercel** (`vercel.json` SPA Rewrites) | Global edge deployment, automated CI/CD, and fast asset caching |
 | **Routing** | **React Router DOM 7.18.3** | Client-side routing, protected routes, and isolated admin sub-trees |
 | **Data Visualization** | **Recharts 3.10.1** | Radar charts, bar comparisons, and multi-store historical price curves |
-| **Styling & UI** | Custom CSS Variables, **Lucide React 1.39.0** | WCAG Dark/Light themes, glassmorphism, responsive breakpoints |
+| **Styling & Motion** | Custom CSS Variables, Keyframes, **Lucide React 1.39.0** | WCAG Dark/Light themes, card sheens, micro-interactions |
 | **Notifications** | **React Hot Toast 2.6.0** | Non-blocking user feedback and validation toasts |
 | **Backend Framework** | **Python 3.12+**, **Django 5.0.7**, **Django REST Framework 3.17.1** | Scalable REST API architecture and database ORM |
 | **Authentication** | **SimpleJWT 5.5.1** | JWT access/refresh token rotation, claims, and token blacklisting |
-| **Database** | **PostgreSQL** (Production) / **SQLite** (Development) | Relational storage across 17 structured domain models |
+| **Database** | **PostgreSQL** (Production: `DealLens_db`) / **SQLite** (Development) | Relational storage across 17 structured domain models |
 | **Scraping & Parsing** | **BeautifulSoup4 4.15.0**, **Requests 2.34.2**, **Playwright** | Multi-store HTML extraction, schema parsing, and DOM fallback |
+| **Reporting & Archival**| **CSV / HTML Exporter** (`backend/users/report_service.py`) | 30-day operational report generation and local disk file archival |
 | **Security & Middleware**| **Django-CORS-Headers**, **WhiteNoise 6.9.0**, Rate-Limiting | CORS isolation, asset compression, SSRF protection |
-| **Testing** | **Django TestCase** (133 Tests), **ESLint 10.8** | Full integration, unit, and frontend lint verification |
+| **Testing & Quality** | **Django TestCase** (133 Tests), **ESLint 10.8** | Integration, unit, and frontend lint verification |
 
 ---
 
 ## 📁 Monorepo Layout
 
 ```text
-ShopSmart/
+DealLens/
 ├── backend/                             # Django 5 + DRF Backend
 │   ├── config/                          # Project settings, root urls, WSGI/ASGI
 │   ├── products/                        # Core products, analysis, offers, scrapers
@@ -159,17 +182,24 @@ ShopSmart/
 │   │   ├── serializers.py               # Serializers (URLAnalysis, Product, Offer, etc.)
 │   │   ├── views.py                     # API views (Catalog, Recent, Admin Telemetry)
 │   │   └── tests.py                     # Product & extraction test suite
-│   ├── users/                           # User management, auth, and price alerts
+│   ├── reports/                         # Automated 30-day operational report disk archive (.csv, .html)
+│   ├── users/                           # User management, auth, price alerts, reports
 │   │   ├── models.py                    # Custom user profiles & PriceAlert models
-│   │   ├── views.py                     # Auth, profile, password reset, admin stats
+│   │   ├── report_service.py            # 30-day operational report generator & disk storage
+│   │   ├── views.py                     # Auth, profile, admin stats, monthly reports, user activity
 │   │   └── tests.py                     # Auth & security test suite
 │   ├── requirements.txt                 # Pinned Python dependencies
 │   ├── .env.example                     # Backend environment template
 │   └── Dockerfile                       # Container definition for backend
 ├── frontend/                            # React 19 + Vite 8 Single Page App
 │   ├── src/
-│   │   ├── api/                         # Axios instance with JWT interceptors
-│   │   ├── components/                  # Navbar, Footer, PlatformBadge, Charts, Skeletons
+│   │   ├── api/                         # Axios instance with JWT interceptors (deallens_* tokens)
+│   │   ├── components/                  # BrandLogo, MarketplaceComparisonCards, AnalysisResult, Charts
+│   │   │   ├── BrandLogo.jsx            # Custom Cart-Inside-Lens SVG brand emblem
+│   │   │   ├── MarketplaceComparisonCards.jsx # Card-based comparison matrix & inspection drawer
+│   │   │   ├── AnalysisResult.jsx       # AI deal recommendation & factor summary
+│   │   │   ├── PriceHistoryChart.jsx    # Multi-store price movement line chart
+│   │   │   └── Navbar.jsx / Footer.jsx  # Universal navigation & responsive footer
 │   │   ├── context/                     # AuthContext (sessions), ThemeContext (dark/light)
 │   │   ├── pages/
 │   │   │   ├── Home.jsx                 # Analyzer hero, featured deals, benefits
@@ -183,17 +213,20 @@ ShopSmart/
 │   │   │   ├── Register.jsx             # Account registration
 │   │   │   ├── Profile.jsx              # User credentials & account activity
 │   │   │   ├── AdminLogin.jsx           # Dedicated Admin Portal login
-│   │   │   ├── Admin.jsx                # Admin Dashboard (Telemetry, Users, Products)
+│   │   │   ├── Admin.jsx                # Admin Dashboard (Telemetry, Monthly Report, Users, Products)
 │   │   │   ├── ForgotPassword.jsx       # Recovery flow with token reset
 │   │   │   └── NotFound.jsx             # Custom 404 page
 │   │   ├── utils/                       # Image fallbacks, platform color palettes
 │   │   ├── App.jsx                      # App router & global toast configuration
-│   │   ├── App.css                      # Global UI design system & CSS tokens
+│   │   ├── App.css                      # Global UI design tokens, animations & CSS variables
 │   │   └── main.jsx                     # Vite React DOM entrypoint
 │   ├── vercel.json                      # Vercel configuration (SPA rewrites, headers)
 │   ├── package.json                     # Pinned Node dependencies & scripts
 │   ├── vite.config.js                   # Vite bundler configuration
 │   └── Dockerfile                       # Container definition for frontend
+├── docs/                                # Final Year Project documentation
+│   ├── DealLens_BCA_Documentation.docx  # Comprehensive BCA Project Documentation
+│   └── DealLens_BCA_Project_Report.docx # Formatted BCA Final Project Report
 ├── vercel.json                          # Monorepo root Vercel configuration
 ├── docker-compose.yml                   # Orchestration (DB + Backend + Frontend)
 └── README.md                            # Comprehensive project documentation
@@ -206,7 +239,7 @@ ShopSmart/
 ### Prerequisites
 - **Python:** 3.12 or newer
 - **Node.js:** 20 or newer
-- **Database:** SQLite (default for development) or PostgreSQL
+- **Database:** SQLite (default for development) or PostgreSQL (`DealLens_db`)
 
 ---
 
@@ -229,7 +262,7 @@ pip install -r requirements.txt
 
 # Configure environment variables
 cp .env.example .env
-# (Default settings run on SQLite out-of-the-box)
+# (Default settings run on SQLite out-of-the-box, or set DB_NAME=DealLens_db for PostgreSQL)
 
 # Apply migrations
 python manage.py migrate
@@ -244,7 +277,7 @@ python manage.py createsuperuser
 python manage.py runserver 127.0.0.1:8000
 ```
 
-> **Backend Health Check:** Visit `http://127.0.0.1:8000/api/health/` → `{"status": "ok", "service": "shopsmart-api"}`
+> **Backend Health Check:** Visit `http://127.0.0.1:8000/api/health/` → `{"status": "ok", "service": "deallens-api"}`
 
 #### 2. Frontend Setup
 ```bash
@@ -286,7 +319,7 @@ docker compose up --build
 | `DJANGO_SECRET_KEY` | **Yes** | `django-insecure-default` | Secret key for cryptographic signing |
 | `DJANGO_DEBUG` | No | `True` | Debug mode (`True` for local, `False` for production) |
 | `DJANGO_ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated allowed hostnames |
-| `DB_NAME` | No | *Empty* | PostgreSQL database name (leave empty to use SQLite) |
+| `DB_NAME` | No | *Empty* | PostgreSQL database name (leave empty to use SQLite, or `DealLens_db`) |
 | `DB_USER` | No | *Empty* | PostgreSQL username |
 | `DB_PASSWORD` | No | *Empty* | PostgreSQL password |
 | `DB_HOST` | No | `localhost` | PostgreSQL host |
@@ -352,6 +385,10 @@ docker compose up --build
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :---: | :--- |
 | `GET` | `/api/users/admin-stats/` | Staff | Ingestion rates, user metrics, and platform telemetry |
+| `GET` | `/api/users/monthly-report/` | Staff | Generates 30-day operational report, saves to disk file, returns metrics JSON |
+| `GET` | `/api/users/monthly-report/?download=csv` | Staff | Downloads the 30-day operational report as a `.csv` spreadsheet file |
+| `GET` | `/api/users/monthly-report/?download=html` | Staff | Downloads printable styled HTML report for PDF export |
+| `GET` | `/api/users/:id/activity/` | Staff | Inspects target user's saved wishlist items and active price drop alerts |
 | `GET` | `/api/admin/analyses/` | Staff | Paginated analyses telemetry feed with search & platform filters |
 | `GET` | `/api/admin/products/` | Staff | Manage catalog products with live pagination and search |
 | `DELETE`| `/api/admin/products/:id/` | Staff | Remove product from platform |
@@ -363,7 +400,7 @@ docker compose up --build
 
 ## 🧮 8-Factor Decision Scoring Engine
 
-The core value proposition of ShopSmart is its **deterministic, multi-criteria deal scoring algorithm**. Rather than relying on unreliable black-box LLMs, ShopSmart uses a mathematically grounded scoring matrix:
+The core value proposition of DealLens is its **deterministic, multi-criteria deal scoring algorithm**. Rather than relying on unreliable black-box LLMs, DealLens uses a mathematically grounded scoring matrix:
 
 $$\text{Deal Score} = \sum_{i=1}^{8} (W_i \times S_i)$$
 
@@ -382,7 +419,7 @@ $$\text{Deal Score} = \sum_{i=1}^{8} (W_i \times S_i)$$
 
 ## 🧪 Testing & Code Quality
 
-ShopSmart includes a comprehensive test suite covering API contracts, authentication security, scoring logic, and SSRF prevention.
+DealLens includes a comprehensive test suite covering API contracts, authentication security, scoring logic, and SSRF prevention.
 
 ### Running Backend Tests
 ```bash
@@ -394,6 +431,7 @@ python manage.py test products users --verbosity=2
 - **Health & Catalog:** API liveness, catalog pagination, platform filtering, categories.
 - **Scraping & Ingestion:** Safe extraction pipelines, error handling, metadata fallbacks.
 - **8-Factor Scoring Engine:** Mathematical deal score edge cases, pros/cons generation.
+- **Monthly Operational Reporting:** 30-day window aggregation, CSV generation, disk file saving.
 - **Watchlist & Alerts:** Guest ID isolation, duplicate prevention, price drop triggers.
 - **Security & Auth:** Rate-limited login, JWT refresh rotation, password changes, token blacklisting.
 - **Role Isolation:** Staff privilege verification, superuser promotion limits, forbidden admin routes.
@@ -412,14 +450,14 @@ npm run build
 
 ## 🌐 Vercel Deployment Guide
 
-ShopSmart is pre-configured for seamless, zero-config deployment on **Vercel** with full client-side routing support (SPA rewrites preventing 404 errors on reload).
+DealLens is pre-configured for seamless, zero-config deployment on **Vercel** with full client-side routing support (SPA rewrites preventing 404 errors on reload).
 
 ### 🚀 1. Deploying the Frontend to Vercel (Recommended)
 
 #### Option A: Via Vercel Web Dashboard (Easiest)
 1. **Push your repository** to GitHub, GitLab, or Bitbucket.
 2. Log in to [Vercel](https://vercel.com) and click **"Add New Project"** > **"Project"**.
-3. **Import** your `ShopSmart` repository.
+3. **Import** your `DealLens` repository.
 4. In the **Configure Project** screen:
    - **Framework Preset:** `Vite`
    - **Root Directory:** Click **Edit** and choose `frontend`
@@ -429,7 +467,7 @@ ShopSmart is pre-configured for seamless, zero-config deployment on **Vercel** w
 5. **Environment Variables:**
    - Expand the **Environment Variables** panel and add:
      - `VITE_API_URL` = `https://<your-backend-domain>/api` (your live backend API URL)
-6. Click **Deploy**. Vercel will build and assign you a global edge domain (`https://shopsmart-xyz.vercel.app`).
+6. Click **Deploy**. Vercel will build and assign you a global edge domain (`https://deallens.vercel.app`).
 
 #### Option B: Via Vercel CLI
 ```bash
@@ -446,7 +484,7 @@ vercel --prod
 ### 🛠️ 2. Solving Single Page Application (SPA) 404 Errors on Vercel
 When deploying React Router apps to Vercel, navigating or refreshing pages like `/recent`, `/report/:id`, `/admin`, or `/login` can cause a `404: NOT_FOUND` error if the hosting server tries to look for static files.
 
-ShopSmart solves this out-of-the-box with dedicated `vercel.json` configurations in both `frontend/vercel.json` and the repository root:
+DealLens solves this out-of-the-box with dedicated `vercel.json` configurations in both `frontend/vercel.json` and the repository root:
 ```json
 {
   "framework": "vite",
@@ -471,9 +509,6 @@ ShopSmart solves this out-of-the-box with dedicated `vercel.json` configurations
   ]
 }
 ```
-> **What this does:**
-> - Automatically routes all client-side navigation requests to `index.html` so React Router takes over without 404 errors.
-> - Applies aggressive immutable caching for static Vite bundles in `/assets/` for blazing-fast edge performance.
 
 ---
 
@@ -482,7 +517,7 @@ ShopSmart solves this out-of-the-box with dedicated `vercel.json` configurations
 1. **Configure CORS in Backend:**  
    In your backend `.env` file, include your Vercel deployment URL:
    ```ini
-   CORS_ALLOWED_ORIGINS=https://shopsmart.vercel.app,https://your-custom-domain.com,http://localhost:5173
+   CORS_ALLOWED_ORIGINS=https://deallens.vercel.app,https://your-custom-domain.com,http://localhost:5173
    DJANGO_ALLOWED_HOSTS=your-api-domain.com,localhost,127.0.0.1
    ```
 2. **Set API URL in Vercel:**  
@@ -497,7 +532,7 @@ ShopSmart solves this out-of-the-box with dedicated `vercel.json` configurations
 
 ## 🎓 Academic Project Information
 
-- **Project Title:** ShopSmart — AI-Powered E-Commerce Price Comparison & Decision-Support Platform
+- **Project Title:** DealLens — AI-Powered Multi-Marketplace Price Comparison & Deal Decision-Support Platform
 - **Program:** Bachelor of Computer Applications (BCA) — Final Year Project
 - **Developer:** Punit Kumar
 - **Domain:** Full-Stack Web Development, Data Scraping, E-Commerce Analytics, Decision Intelligence

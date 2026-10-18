@@ -47,6 +47,19 @@ def fetch(url: str, timeout: int = REQUEST_TIMEOUT) -> str:
         )
     except requests.exceptions.HTTPError as e:
         status = e.response.status_code if e.response is not None else "unknown"
+        import os
+        scraper_key = os.getenv("SCRAPER_API_KEY", "").strip()
+        if scraper_key and status in (403, 429, 503):
+            try:
+                proxy_resp = session.get(
+                    "https://api.scraperapi.com/",
+                    params={"api_key": scraper_key, "url": url, "country_code": "in"},
+                    timeout=max(timeout, 25),
+                )
+                if proxy_resp.ok and proxy_resp.text:
+                    return proxy_resp.text
+            except Exception as proxy_err:
+                logger.debug("ScraperAPI fallback failed for %s: %s", url, str(proxy_err)[:80])
         if status == 403:
             raise ExtractionError(
                 "Access denied (HTTP 403). The website is blocking automated requests."

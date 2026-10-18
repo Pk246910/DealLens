@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 /* ==========================================================================
-   ShopSmart Design System — Design 2: Premium AI Decision Platform
+   DealLens Design System — Design 2: Premium AI Decision Platform
    ========================================================================== */
 
 /* Dark Mode (Default for AI Decision Platform) */
@@ -9,9 +9,11 @@
   /* Canvas & Surfaces */
   --bg-primary: #0b0f19;
   --bg-secondary: #111827;
+  --bg-surface: #111827;
   --bg-card: #162032;
   --bg-card-hover: #1e2c45;
   --bg-elevated: #1f2d47;
+  --bg-subtle-surface: rgba(255, 255, 255, 0.035);
   --bg-glass: rgba(17, 24, 39, 0.85);
   --bg-glass-card: rgba(22, 32, 50, 0.7);
 
@@ -42,6 +44,8 @@
   --gradient-ai: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
   --gradient-deal: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(6, 182, 212, 0.1) 100%);
   --gradient-glow: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.12) 0%, transparent 65%);
+  --bg-banner-gradient: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(11, 15, 25, 0.98) 100%);
+  --bg-detail-gradient: linear-gradient(145deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.92) 100%);
   --auth-bg-overlay: linear-gradient(135deg, rgba(11, 15, 25, 0.76) 0%, rgba(11, 15, 25, 0.90) 100%);
   --admin-auth-bg-overlay: linear-gradient(135deg, rgba(11, 15, 25, 0.65) 0%, rgba(11, 15, 25, 0.84) 100%);
   --home-hero-overlay: radial-gradient(ellipse at 50% 35%, rgba(11, 15, 25, 0.65) 0%, rgba(11, 15, 25, 0.92) 100%);
@@ -50,11 +54,13 @@
   /* Shadows */
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
   --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 14px 34px -6px rgba(0, 0, 0, 0.45), 0 0 18px -4px rgba(6, 182, 212, 0.14);
   --shadow-glow: 0 0 25px -4px rgba(6, 182, 212, 0.35);
   --shadow-glow-emerald: 0 0 25px -4px rgba(16, 185, 129, 0.35);
 
   /* Fonts */
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace, Consolas;
 
   /* Radii */
@@ -67,17 +73,19 @@
 
 /* Light Mode Overrides */
 :root:not(.dark) {
-  --bg-primary: #f8fafc;
+  --bg-primary: #f1f5f9;
   --bg-secondary: #ffffff;
+  --bg-surface: #ffffff;
   --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
-  --bg-elevated: #f8fafc;
-  --bg-glass: rgba(255, 255, 255, 0.9);
-  --bg-glass-card: rgba(255, 255, 255, 0.85);
+  --bg-card-hover: #f8fafc;
+  --bg-elevated: #f1f5f9;
+  --bg-subtle-surface: #f8fafc;
+  --bg-glass: rgba(255, 255, 255, 0.92);
+  --bg-glass-card: rgba(255, 255, 255, 0.92);
 
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   --text-accent: #0284c7;
 
   --accent-cyan: #0284c7;
@@ -90,23 +98,26 @@
   --accent-purple: #7c3aed;
   --accent-indigo: #4f46e5;
 
-  --border-color: #e2e8f0;
-  --border-subtle: #f1f5f9;
-  --border-highlight: rgba(2, 132, 199, 0.3);
+  --border-color: #cbd5e1;
+  --border-subtle: #e2e8f0;
+  --border-highlight: rgba(2, 132, 199, 0.45);
 
   --gradient-brand: linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #7c3aed 100%);
   --gradient-ai: linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(124, 58, 237, 0.08) 100%);
   --gradient-deal: linear-gradient(135deg, rgba(5, 150, 105, 0.12) 0%, rgba(2, 132, 199, 0.06) 100%);
   --gradient-glow: radial-gradient(circle at 50% 0%, rgba(2, 132, 199, 0.08) 0%, transparent 65%);
-  --auth-bg-overlay: linear-gradient(135deg, rgba(248, 250, 252, 0.82) 0%, rgba(241, 245, 249, 0.92) 100%);
-  --admin-auth-bg-overlay: linear-gradient(135deg, rgba(248, 250, 252, 0.86) 0%, rgba(241, 245, 249, 0.94) 100%);
-  --home-hero-overlay: radial-gradient(ellipse at 50% 35%, rgba(248, 250, 252, 0.75) 0%, rgba(248, 250, 252, 0.96) 100%);
-  --modal-overlay: rgba(15, 23, 42, 0.65);
+  --bg-banner-gradient: linear-gradient(135deg, #ffffff 0%, #f0f9ff 60%, #f8fafc 100%);
+  --bg-detail-gradient: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  --auth-bg-overlay: linear-gradient(135deg, rgba(248, 250, 252, 0.86) 0%, rgba(241, 245, 249, 0.94) 100%);
+  --admin-auth-bg-overlay: linear-gradient(135deg, rgba(248, 250, 252, 0.88) 0%, rgba(241, 245, 249, 0.95) 100%);
+  --home-hero-overlay: radial-gradient(ellipse at 50% 35%, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.97) 100%);
+  --modal-overlay: rgba(15, 23, 42, 0.55);
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-  --shadow-glow: 0 0 20px -3px rgba(2, 132, 199, 0.2);
-  --shadow-glow-emerald: 0 0 20px -3px rgba(5, 150, 105, 0.2);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  --shadow-card-hover: 0 14px 30px -6px rgba(15, 23, 42, 0.12), 0 0 18px -4px rgba(2, 132, 199, 0.16);
+  --shadow-glow: 0 0 20px -3px rgba(2, 132, 199, 0.22);
+  --shadow-glow-emerald: 0 0 20px -3px rgba(5, 150, 105, 0.22);
 }
 
 /* ==========================================================================
@@ -338,7 +349,8 @@ body {
   border: 1px solid rgba(6, 182, 212, 0.3);
 }
 
-.badge-green {
+.badge-green,
+.badge-emerald {
   background: rgba(16, 185, 129, 0.15);
   color: var(--accent-green);
   border: 1px solid rgba(16, 185, 129, 0.3);
@@ -422,16 +434,17 @@ body {
 }
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.6rem;
   text-decoration: none;
   font-size: 1.45rem;
   font-weight: 800;
   letter-spacing: -0.03em;
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  transition: transform 0.2s ease;
+}
+.brand:hover {
+  transform: translateY(-1px);
 }
 
 .nav-links-group {
@@ -764,6 +777,412 @@ body {
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .product-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ==========================================================================
+   Marketplace Comparison Cards — Animations & Interactive Transitions
+   ========================================================================== */
+@keyframes mpCardFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mpCheapestPulse {
+  0%, 100% {
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.22), 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 36px rgba(16, 185, 129, 0.42), 0 12px 28px rgba(16, 185, 129, 0.18);
+  }
+}
+
+@keyframes mpRibbonShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes mpDetailExpand {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mpBarGrow {
+  from {
+    width: 0%;
+  }
+}
+
+.mp-comparison-card {
+  animation: mpCardFadeUp 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease,
+    background 0.25s ease;
+  will-change: transform, box-shadow;
+}
+
+.mp-comparison-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 65%;
+  height: 100%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  transition: left 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mp-comparison-card:hover::before {
+  left: 140%;
+}
+
+.mp-comparison-card:hover {
+  transform: translateY(-7px) scale(1.015) !important;
+  box-shadow: var(--shadow-card-hover), var(--shadow-glow) !important;
+}
+
+.mp-comparison-card:active {
+  transform: translateY(-2px) scale(0.995) !important;
+}
+
+.mp-comparison-card.mp-cheapest-card {
+  animation:
+    mpCardFadeUp 0.48s cubic-bezier(0.22, 1, 0.36, 1) both,
+    mpCheapestPulse 3.2s ease-in-out 0.5s infinite;
+}
+
+.mp-comparison-card.mp-cheapest-card:hover {
+  transform: translateY(-8px) scale(1.02) !important;
+  box-shadow: var(--shadow-card-hover), var(--shadow-glow-emerald) !important;
+}
+
+.mp-cheapest-ribbon {
+  background: linear-gradient(90deg, #059669 0%, #10b981 35%, #6ee7b7 50%, #10b981 65%, #059669 100%);
+  background-size: 220% 220%;
+  animation: mpRibbonShimmer 3.5s ease infinite;
+}
+
+.mp-buy-btn {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease !important;
+}
+
+.mp-buy-btn svg {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mp-buy-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.mp-buy-btn:hover svg {
+  transform: translate(3px, -2px);
+}
+
+.mp-detail-panel {
+  animation: mpDetailExpand 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mp-metric-card {
+  animation: mpCardFadeUp 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.mp-metric-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-highlight) !important;
+  box-shadow: var(--shadow-card-hover);
+}
+
+.mp-score-bar-fill {
+  animation: mpBarGrow 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ==========================================================================
+   Full-Frontend Motion System — All Pages, Modules & Interactive Controls
+   ========================================================================== */
+
+@keyframes dlPageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dlPanelReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dlAuthCardEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dlHeroFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* 1. Route-level page transition */
+.dl-route-transition {
+  animation: dlPageEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 2. Staggered section cascade inside any page container */
+.page-container > * {
+  animation: dlPanelReveal 0.46s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.page-container > *:nth-child(1) { animation-delay: 0.02s; }
+.page-container > *:nth-child(2) { animation-delay: 0.08s; }
+.page-container > *:nth-child(3) { animation-delay: 0.14s; }
+.page-container > *:nth-child(4) { animation-delay: 0.20s; }
+.page-container > *:nth-child(5) { animation-delay: 0.26s; }
+.page-container > *:nth-child(6) { animation-delay: 0.32s; }
+.page-container > *:nth-child(7) { animation-delay: 0.38s; }
+.page-container > *:nth-child(8) { animation-delay: 0.44s; }
+
+/* 3. Card panels & glass surfaces across Home, Analysis, Reports, Alerts, Profile, Admin */
+.card-panel,
+.card-glass {
+  animation: dlPanelReveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.26s ease,
+    box-shadow 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.25s ease;
+}
+
+.card-panel:hover {
+  border-color: var(--border-highlight);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.card-glow {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s ease,
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-glow:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-highlight);
+  box-shadow: var(--shadow-card-hover), var(--shadow-glow);
+}
+
+/* 4. Product grids (Home Catalog, Wishlist, Recent History) staggered entrance & hover sheen */
+.product-grid > * {
+  animation: mpCardFadeUp 0.46s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.product-grid > *:nth-child(1) { animation-delay: 0.03s; }
+.product-grid > *:nth-child(2) { animation-delay: 0.08s; }
+.product-grid > *:nth-child(3) { animation-delay: 0.13s; }
+.product-grid > *:nth-child(4) { animation-delay: 0.18s; }
+.product-grid > *:nth-child(5) { animation-delay: 0.23s; }
+.product-grid > *:nth-child(6) { animation-delay: 0.28s; }
+.product-grid > *:nth-child(7) { animation-delay: 0.33s; }
+.product-grid > *:nth-child(8) { animation-delay: 0.38s; }
+.product-grid > *:nth-child(9) { animation-delay: 0.43s; }
+.product-grid > *:nth-child(10) { animation-delay: 0.48s; }
+.product-grid > *:nth-child(11) { animation-delay: 0.53s; }
+.product-grid > *:nth-child(12) { animation-delay: 0.58s; }
+
+.product-card-elevated {
+  overflow: hidden;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease,
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.product-card-elevated::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  transition: left 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.product-card-elevated:hover::before {
+  left: 140%;
+}
+
+.product-card-elevated:hover {
+  transform: translateY(-6px) scale(1.01);
+  border-color: var(--border-highlight);
+  box-shadow: var(--shadow-card-hover), var(--shadow-glow);
+}
+
+/* 5. Navbar, BrandLogo & Navigation Link Hover Animations */
+.navbar {
+  animation: fadeInDown 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.brand svg {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), filter 0.28s ease;
+}
+
+.brand:hover svg {
+  transform: scale(1.09) rotate(-4deg);
+  filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.45));
+}
+
+.nav-item::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--gradient-brand);
+  border-radius: 2px;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-item:hover::after,
+.nav-item.active::after {
+  transform: scaleX(1);
+}
+
+/* 6. Buttons — Sheen Sweep, Tactile Press & Icon Micro-Motion */
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.btn svg {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn:hover:not(:disabled) svg {
+  transform: translateX(2px) scale(1.06);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97) !important;
+}
+
+/* 7. Inputs, Selects & Textareas — Smooth Focus Glow Across All Forms */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    background-color 0.22s ease,
+    transform 0.18s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.16), 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 8. Auth & Admin Auth Full-Page Cards */
+.auth-page-wrapper > *,
+.admin-auth-page-wrapper > * {
+  animation: dlAuthCardEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 9. Data Tables & Admin Portal Rows */
+table tbody tr {
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+table tbody tr:hover {
+  background-color: rgba(6, 182, 212, 0.05) !important;
+}
+
+/* 10. Badges & Status Pills */
+.badge {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.badge:hover {
+  transform: translateY(-1px);
+}
+
+/* 11. Modal Overlay & Close Button */
+.modal-overlay-backdrop {
+  animation: fadeIn 0.22s ease both;
+}
+
+.modal-close-icon {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.modal-close-icon:hover {
+  transform: rotate(90deg) scale(1.08);
 }
 
 @media (prefers-reduced-motion: reduce) {

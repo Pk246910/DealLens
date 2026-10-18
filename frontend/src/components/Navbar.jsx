@@ -16,6 +16,7 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import API from "../api/axios";
+import BrandLogo from "./BrandLogo";
 
 const isActive = (pathname, path) => {
   if (path === "/") return pathname === "/";
@@ -82,11 +83,8 @@ const Navbar = () => {
     <header className="navbar" role="banner">
       {/* Brand Logo & Platform Subtitle */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        <Link to="/" className="brand" aria-label="ShopSmart Home">
-          <span style={{ fontSize: "1.35rem", display: "inline-flex", filter: "drop-shadow(0 0 8px rgba(6, 182, 212, 0.4))" }}>
-            ⚡
-          </span>
-          <span>ShopSmart</span>
+        <Link to="/" className="brand" aria-label="DealLens Home">
+          <BrandLogo iconSize={34} fontSize="1.45rem" />
         </Link>
         <span
           style={{

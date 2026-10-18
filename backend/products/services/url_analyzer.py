@@ -5,7 +5,9 @@ from urllib.parse import urlparse
 PLATFORM_DOMAINS = {
     "amazon.in": "Amazon",
     "amazon.com": "Amazon",
+    "amzn.in": "Amazon",
     "flipkart.com": "Flipkart",
+    "fkrt.it": "Flipkart",
     "myntra.com": "Myntra",
     "ajio.com": "AJIO",
     "meesho.com": "Meesho",
@@ -13,6 +15,32 @@ PLATFORM_DOMAINS = {
     "reliancedigital.in": "Reliance Digital",
     "relianceelectronics.com": "Reliance Digital",
     "tatacliq.com": "Tata CLiQ",
+    "nykaa.com": "Nykaa",
+    "nykaafashion.com": "Nykaa",
+    "jiomart.com": "JioMart",
+    "snapdeal.com": "Snapdeal",
+    "vijaysales.com": "Vijay Sales",
+    "poorvika.com": "Poorvika",
+    "boat-lifestyle.com": "boAt",
+    "samsung.com": "Samsung Shop",
+    "apple.com": "Apple Store",
+    "oneplus.in": "OnePlus Store",
+    "mi.com": "Xiaomi Store",
+    "realme.com": "Realme Store",
+    "lenskart.com": "Lenskart",
+    "decathlon.in": "Decathlon",
+    "pepperfry.com": "Pepperfry",
+    "firstcry.com": "FirstCry",
+}
+
+RESERVED_TEST_DOMAINS = {
+    "example.com",
+    "example.org",
+    "example.net",
+    "test.com",
+    "localhost",
+    "127.0.0.1",
+    "invalid",
 }
 
 SUPPORTED_PLATFORMS = [
@@ -24,7 +52,25 @@ SUPPORTED_PLATFORMS = [
     {"name": "Croma", "domains": ["croma.com"], "icon": "📺"},
     {"name": "Reliance Digital", "domains": ["reliancedigital.in", "relianceelectronics.com"], "icon": "🏪"},
     {"name": "Tata CLiQ", "domains": ["tatacliq.com"], "icon": "🏬"},
+    {"name": "Nykaa", "domains": ["nykaa.com", "nykaafashion.com"], "icon": "💄"},
+    {"name": "JioMart", "domains": ["jiomart.com"], "icon": "🛍️"},
+    {"name": "Snapdeal", "domains": ["snapdeal.com"], "icon": "🏷️"},
+    {"name": "Vijay Sales", "domains": ["vijaysales.com"], "icon": "🔌"},
 ]
+
+
+def _derive_store_name_from_domain(domain: str) -> str:
+    """Derive a clean human-readable store name from an arbitrary domain."""
+    host = (domain or "").split(":")[0].lower().strip(".")
+    for prefix in ("www.", "m.", "shop.", "store.", "buy.", "online.", "dl."):
+        if host.startswith(prefix):
+            host = host[len(prefix):]
+    parts = host.split(".")
+    if not parts or not parts[0]:
+        return "Online Store"
+    core = parts[0]
+    cleaned = re.sub(r"[-_]+", " ", core).strip()
+    return cleaned.title() if cleaned else "Online Store"
 
 
 class URLAnalyzer:
@@ -48,16 +94,25 @@ class URLAnalyzer:
         except Exception:
             return {"valid": False, "error": "Invalid URL format"}
 
-        return {"valid": True, "url": url, "domain": parsed.netloc.lower().replace("www.", "")}
+        domain = parsed.netloc.lower().split(":")[0]
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return {"valid": True, "url": url, "domain": domain}
 
     @staticmethod
-    def detect_platform(url: str) -> dict:
+    def detect_platform(url: str, allow_universal: bool = False) -> dict:
         validation = URLAnalyzer.validate_url(url)
         if not validation["valid"]:
             return {"supported": False, **validation}
 
         domain = validation["domain"]
         platform_name = PLATFORM_DOMAINS.get(domain)
+
+        if not platform_name:
+            for known_domain, name in PLATFORM_DOMAINS.items():
+                if domain == known_domain or domain.endswith("." + known_domain):
+                    platform_name = name
+                    break
 
         if platform_name:
             return {
@@ -66,6 +121,23 @@ class URLAnalyzer:
                 "url": validation["url"],
                 "domain": domain,
                 "platform": platform_name,
+                "is_universal": False,
+                "error": "",
+            }
+
+        is_reserved = any(
+            domain == r or domain.endswith("." + r) for r in RESERVED_TEST_DOMAINS
+        ) or "." not in domain
+
+        if allow_universal and not is_reserved:
+            derived_platform = _derive_store_name_from_domain(domain)
+            return {
+                "supported": True,
+                "valid": True,
+                "url": validation["url"],
+                "domain": domain,
+                "platform": derived_platform,
+                "is_universal": True,
                 "error": "",
             }
 

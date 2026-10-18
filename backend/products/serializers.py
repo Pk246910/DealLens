@@ -146,6 +146,36 @@ class ProductSerializer(serializers.ModelSerializer):
             return None
 
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        offers_list = data.get("offers") or []
+        if len(offers_list) > 4:
+            from .services.benchmark_service import get_category_platforms
+            live_offer = next((o for o in offers_list if o.get("data_source") == "live"), None)
+            src_plat = (live_offer or offers_list[0]).get("store_name", "")
+            allowed = get_category_platforms(instance.category, title=instance.title, source_platform=src_plat)
+            allowed_lower = {p.lower() for p in allowed}
+            filtered_offers = [
+                o for o in offers_list
+                if (o.get("store_name") or "").lower() in allowed_lower or o.get("data_source") == "live"
+            ]
+            if filtered_offers:
+                data["offers"] = filtered_offers
+                data["platforms_available"] = list({o.get("store_name") for o in filtered_offers if o.get("store_name")})
+                in_stock_prices = [float(o["current_price"]) for o in filtered_offers if o.get("in_stock") and float(o.get("current_price") or 0) > 0]
+                if in_stock_prices:
+                    data["lowest_price"] = min(in_stock_prices)
+                    data["highest_price"] = max(in_stock_prices)
+                    best = min(
+                        (o for o in filtered_offers if o.get("in_stock") and float(o.get("current_price") or 0) > 0),
+                        key=lambda x: float(x["current_price"]),
+                        default=None,
+                    )
+                    if best:
+                        data["best_offer"] = best
+        return data
+
+
 class WishlistSerializer(serializers.ModelSerializer):
     product_details = ProductSerializer(source="product", read_only=True)
 
@@ -190,9 +220,52 @@ class URLAnalysisSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         res = data.get("analysis_result")
         if isinstance(res, dict) and isinstance(res.get("product"), dict):
+            res["extraction_notice"] = ""
             prod = res["product"]
+            prod["extraction_notice"] = ""
             if not prod.get("image_url") or "placehold.co" in prod.get("image_url", ""):
                 prod["image_url"] = data.get("product_image") or ""
+            from .services.benchmark_service import filter_comparison_to_selective_platforms, get_category_platforms
+            src_plat = prod.get("platform") or instance.detected_platform or ""
+            cat = prod.get("category") or (instance.product.category if instance.product else "")
+            title = prod.get("title") or (instance.product.title if instance.product else "")
+            if isinstance(res.get("comparisons"), dict):
+                res["comparisons"] = filter_comparison_to_selective_platforms(
+                    res["comparisons"], category=cat, title=title, source_platform=src_plat
+                )
+            if isinstance(res.get("ai_analysis"), dict):
+                ai_dict = res["ai_analysis"]
+                if not ai_dict.get("value_metrics") or not ai_dict.get("smart_tips"):
+                    try:
+                        from .services.ai_analysis import AIAnalysisService
+                        fresh_ai = AIAnalysisService().analyze(
+                            {**prod, "platform": src_plat},
+                            res.get("comparisons") or {},
+                        )
+                        for k in (
+                            "summary",
+                            "pros",
+                            "cons",
+                            "recommendation",
+                            "savings_tip",
+                            "smart_tips",
+                            "price_fairness",
+                            "buy_timing",
+                            "value_metrics",
+                        ):
+                            if k in fresh_ai:
+                                ai_dict[k] = fresh_ai[k]
+                    except Exception:
+                        pass
+                if isinstance(ai_dict.get("scored_listings"), list):
+                    allowed = get_category_platforms(cat, title=title, source_platform=src_plat)
+                    allowed_lower = {p.lower() for p in allowed}
+                    ai_dict["scored_listings"] = [
+                        l for l in ai_dict["scored_listings"]
+                        if l.get("data_source") == "unavailable"
+                        or (l.get("platform") or "").lower() in allowed_lower
+                        or l.get("is_source")
+                    ]
         return data
 
 

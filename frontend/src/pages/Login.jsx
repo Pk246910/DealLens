@@ -8,13 +8,13 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Sparkles,
   ShieldCheck,
   ShieldAlert,
   AlertCircle,
   Loader2,
 } from "lucide-react";
 import loginBg from "../assets/login-bg.jpg";
+import { BrandIcon } from "../components/BrandLogo";
 
 const Login = () => {
   const { login, user } = useAuth();
@@ -53,7 +53,7 @@ const Login = () => {
     setLoading(true);
     try {
       await login(username, password, { disallowStaff: true });
-      toast.success("Welcome back to ShopSmart!");
+      toast.success("Welcome back to DealLens!");
       navigate(from, { replace: true });
     } catch (err) {
       if (err.isStaff || err.message === "ADMIN_ACCOUNT_NOT_ALLOWED") {
@@ -119,22 +119,8 @@ const Login = () => {
 
         {/* Header Branding */}
         <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 48,
-              height: 48,
-              borderRadius: "12px",
-              background: "rgba(6, 182, 212, 0.1)",
-              border: "1px solid rgba(6, 182, 212, 0.25)",
-              color: "var(--accent-cyan)",
-              marginBottom: "0.85rem",
-              boxShadow: "0 0 15px rgba(6, 182, 212, 0.15)",
-            }}
-          >
-            <Sparkles size={24} />
+          <div style={{ marginBottom: "0.85rem", display: "flex", justifyContent: "center" }}>
+            <BrandIcon size={50} />
           </div>
           <div style={{ display: "inline-block", marginBottom: "0.4rem" }}>
             <span

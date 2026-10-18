@@ -103,7 +103,7 @@ const Register = () => {
           className="card-panel"
           style={{
             padding: "2.5rem 2rem",
-            background: "linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(11, 15, 25, 0.95))",
+            background: "var(--bg-banner-gradient)",
             border: "1px solid var(--border-color)",
             borderRadius: "16px",
             display: "flex",
@@ -511,7 +511,7 @@ const Register = () => {
 
             {/* Terms notice */}
             <p style={{ fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.4, margin: "0.25rem 0" }}>
-              By creating an account, you agree to ShopSmart's automated scraping terms and privacy protocols.
+              By creating an account, you agree to DealLens's automated scraping terms and privacy protocols.
             </p>
 
             {/* Submit Action */}
