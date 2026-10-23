@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import API from "../api/axios";
 import { getPlatformColor } from "../utils/platforms";
+import { computeYDomain, formatPriceTick } from "../utils/chartUtils";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -457,7 +458,7 @@ const PriceHistoryChart = ({
     });
   }, [validHistory, demos, timeRange]);
 
-  // Dynamic Y-Axis Bounds (eliminates ₹0 bottom dead-space)
+  // Dynamic Y-Axis Bounds (eliminates ₹0 bottom dead-space and scales adaptively)
   const yDomain = useMemo(() => {
     if (mergedData.length === 0) return [0, "auto"];
 
@@ -466,29 +467,7 @@ const PriceHistoryChart = ({
       activeKeys.map((s) => row[s]).filter((p) => typeof p === "number" && p > 0)
     );
 
-    if (activePrices.length === 0) return [0, "auto"];
-
-    const minVal = Math.min(...activePrices);
-    const maxVal = Math.max(...activePrices);
-    const diff = maxVal - minVal;
-
-    const basePad = Math.max(50, Math.round(minVal * 0.02));
-    const padding = diff > 0 ? Math.max(basePad, Math.round(diff * 0.15)) : Math.max(50, Math.round(minVal * 0.05));
-    const step =
-      minVal < 1000
-        ? 100
-        : diff > 25000
-        ? 5000
-        : diff > 8000
-        ? 2000
-        : diff > 2500
-        ? 1000
-        : 500;
-
-    const yMin = Math.max(0, Math.floor((minVal - padding) / step) * step);
-    const yMax = Math.ceil((maxVal + padding) / step) * step;
-
-    return [yMin, yMax];
+    return computeYDomain(activePrices);
   }, [mergedData, visibleStores, visibleDemoKeys]);
 
   const storeColor = (s) => getPlatformColor(s.replace(" (Demo)", "")) || "#06b6d4";
@@ -840,7 +819,7 @@ const PriceHistoryChart = ({
           {/* Recharts LineChart */}
           <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
-              <LineChart data={mergedData} margin={{ top: 8, right: 12, left: -4, bottom: 4 }}>
+              <LineChart data={mergedData} margin={{ top: 10, right: 20, left: 10, bottom: 6 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color, #1e293b)" opacity={0.6} />
                 <XAxis
                   dataKey="date"
@@ -854,17 +833,12 @@ const PriceHistoryChart = ({
                 <YAxis
                   stroke="var(--text-secondary, #94a3b8)"
                   fontSize={11}
+                  fontFamily="var(--font-mono, monospace)"
                   tickLine={false}
                   axisLine={{ stroke: "var(--border-color, #334155)" }}
                   domain={yDomain}
-                  tickFormatter={(v) => {
-                    if (v >= 100000) return `₹${(v / 100000).toFixed(1).replace(/\.0$/, "")}L`;
-                    if (v >= 1000) {
-                      const k = v / 1000;
-                      return Number.isInteger(k) ? `₹${k}k` : `₹${k.toFixed(1)}k`;
-                    }
-                    return `₹${v}`;
-                  }}
+                  width={64}
+                  tickFormatter={(v) => formatPriceTick(v, yDomain[0], yDomain[1])}
                   tickCount={6}
                 />
                 {dualAxis && (
@@ -873,26 +847,16 @@ const PriceHistoryChart = ({
                     orientation="right"
                     stroke="var(--text-secondary, #94a3b8)"
                     fontSize={11}
+                    fontFamily="var(--font-mono, monospace)"
                     tickLine={false}
                     axisLine={{ stroke: "var(--border-color, #334155)" }}
-                    tickFormatter={(v) => {
-                      if (v >= 100000) return `₹${(v / 100000).toFixed(1).replace(/\.0$/, "")}L`;
-                      if (v >= 1000) {
-                        const k = v / 1000;
-                        return Number.isInteger(k) ? `₹${k}k` : `₹${k.toFixed(1)}k`;
-                      }
-                      return `₹${v}`;
-                    }}
+                    domain={yDomain}
+                    width={64}
+                    tickFormatter={(v) => formatPriceTick(v, yDomain[0], yDomain[1])}
                     tickCount={6}
                   />
                 )}
                 <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  wrapperStyle={{ paddingTop: "0.6rem", fontSize: "0.75rem" }}
-                  formatter={(val) => (
-                    <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{val}</span>
-                  )}
-                />
                 {visibleStores.map((s) => (
                   <Line
                     key={s}

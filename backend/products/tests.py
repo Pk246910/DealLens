@@ -174,6 +174,14 @@ class WishlistApiTests(TestCase):
 class AnalysisApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.user = User.objects.create_user(username="analysis_user", password="password123")
+        self.client.force_authenticate(user=self.user)
+
+    def test_analyze_url_unauthenticated_blocked(self):
+        anon_client = APIClient()
+        res = anon_client.post("/api/analyze-url/", {"url": "https://www.flipkart.com/roadster-shirt/p/itm123"}, format="json")
+        self.assertEqual(res.status_code, 401)
+        self.assertTrue(res.json().get("auth_required"))
 
     def test_analyze_url_required(self):
         res = self.client.post("/api/analyze-url/", {}, format="json")
@@ -190,6 +198,17 @@ class AnalysisApiTests(TestCase):
     def test_analyze_url_unsupported_platform(self):
         res = self.client.post("/api/analyze-url/", {"url": "https://example.com/product/123"}, format="json")
         self.assertEqual(res.status_code, 400)
+
+    def test_analyze_url_fashion_category_and_price(self):
+        from products.views import AnalyzeURLView
+        view = AnalyzeURLView()
+        url = "https://www.flipkart.com/roadster-men-solid-casual-navy-blue-shirt/p/itm123"
+        keywords = view._extract_url_keywords(url)
+        self.assertIn("shirt", keywords)
+        built = view._build_product_from_url(url, "Flipkart")
+        self.assertIsNotNone(built)
+        self.assertEqual(built["category"], "Fashion")
+        self.assertLess(built["price"], 2000)
 
     def test_analysis_history(self):
         res = self.client.get("/api/analyses/")

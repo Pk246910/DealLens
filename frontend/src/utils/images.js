@@ -1,3 +1,114 @@
+const CURATED_PHOTOS = {
+  apple_iphone: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80",
+  apple_macbook: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80",
+  apple_ipad: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&auto=format&fit=crop&q=80",
+  apple_airpods: "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=800&auto=format&fit=crop&q=80",
+  apple_watch: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=800&auto=format&fit=crop&q=80",
+  samsung_galaxy: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&auto=format&fit=crop&q=80",
+  google_pixel: "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&auto=format&fit=crop&q=80",
+  smart_glasses: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&auto=format&fit=crop&q=80",
+  sony_headphones: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
+  sony_camera: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80",
+  nike_shoes: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80",
+  puma_shoes: "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&auto=format&fit=crop&q=80",
+  levis_jeans: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&auto=format&fit=crop&q=80",
+  casual_shirt: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80",
+  backpack: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&auto=format&fit=crop&q=80",
+  refrigerator: "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&auto=format&fit=crop&q=80",
+  kitchen_mixer: "https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=800&auto=format&fit=crop&q=80",
+  kitchen_appliance: "https://images.unsplash.com/photo-1585515320310-259814833e62?w=800&auto=format&fit=crop&q=80",
+  water_purifier: "https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?w=800&auto=format&fit=crop&q=80",
+  Smartphones: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&auto=format&fit=crop&q=80",
+  Laptops: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&auto=format&fit=crop&q=80",
+  Tablets: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&auto=format&fit=crop&q=80",
+  Headphones: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
+  Earbuds: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&auto=format&fit=crop&q=80",
+  Watches: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80",
+  Televisions: "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&auto=format&fit=crop&q=80",
+  Cameras: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80",
+  Footwear: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80",
+  Fashion: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80",
+  Appliances: "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&auto=format&fit=crop&q=80",
+  Speakers: "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=800&auto=format&fit=crop&q=80",
+};
+
+export function getCuratedProductPhoto(title = "", brand = "", category = "") {
+  const t = `${brand || ""} ${title || ""}`.toLowerCase();
+
+  if (/meta|ray-ban|rayban|smart glasses|wayfarer|transitions/.test(t)) {
+    return CURATED_PHOTOS.smart_glasses;
+  }
+  if (/iphone/.test(t) || (/apple/.test(t) && /phone/.test(t))) {
+    return CURATED_PHOTOS.apple_iphone;
+  }
+  if (/macbook/.test(t) || (/apple/.test(t) && /laptop/.test(t))) {
+    return CURATED_PHOTOS.apple_macbook;
+  }
+  if (/ipad/.test(t)) {
+    return CURATED_PHOTOS.apple_ipad;
+  }
+  if (/airpods/.test(t)) {
+    return CURATED_PHOTOS.apple_airpods;
+  }
+  if (/apple watch/.test(t)) {
+    return CURATED_PHOTOS.apple_watch;
+  }
+  if (/pixel/.test(t)) {
+    return CURATED_PHOTOS.google_pixel;
+  }
+  if (/galaxy/.test(t) || (/samsung/.test(t) && /s24|s23|s22|s21|ultra|plus|phone|mobile/.test(t))) {
+    return CURATED_PHOTOS.samsung_galaxy;
+  }
+  if (/earbuds|buds|airdopes|tws|in-ear/.test(t)) {
+    return CURATED_PHOTOS.Earbuds;
+  }
+  if (/headphone|wh-1000|rockerz|quietcomfort|over-ear/.test(t)) {
+    return CURATED_PHOTOS.Headphones;
+  }
+  if (/smartwatch|watch|colorfit|fitbit/.test(t)) {
+    return CURATED_PHOTOS.Watches;
+  }
+  if (/laptop|thinkpad|vivobook|zenbook|pavilion|inspiron|legion|notebook/.test(t)) {
+    return CURATED_PHOTOS.Laptops;
+  }
+  if (/tablet|tab/.test(t)) {
+    return CURATED_PHOTOS.Tablets;
+  }
+  if (/\btv\b|television|bravia|oled|qled|monitor/.test(t)) {
+    return CURATED_PHOTOS.Televisions;
+  }
+  if (/camera|mirrorless|dslr|gopro|eos|alpha/.test(t)) {
+    return CURATED_PHOTOS.Cameras;
+  }
+  if (/shoe|sneaker|running|nike|puma|adidas|reebok|air max|dunk/.test(t)) {
+    return CURATED_PHOTOS.Footwear;
+  }
+  if (/jean|denim|511|512|levis|levi's/.test(t)) {
+    return CURATED_PHOTOS.levis_jeans;
+  }
+  if (/shirt|polo|t-shirt|kurta|jacket|apparel/.test(t)) {
+    return CURATED_PHOTOS.casual_shirt;
+  }
+  if (/backpack|bag|rucksack|wildcraft/.test(t)) {
+    return CURATED_PHOTOS.backpack;
+  }
+  if (/refrigerator|fridge|single door|double door/.test(t)) {
+    return CURATED_PHOTOS.refrigerator;
+  }
+  if (/mixer|grinder|blender|juicer/.test(t)) {
+    return CURATED_PHOTOS.kitchen_mixer;
+  }
+  if (/kettle|fryer|air fryer|cooktop/.test(t)) {
+    return CURATED_PHOTOS.kitchen_appliance;
+  }
+  if (/purifier|aquaguard|aquasaver|water filter/.test(t)) {
+    return CURATED_PHOTOS.water_purifier;
+  }
+
+  const themeKey = inferThemeKey(category, title);
+  return CURATED_PHOTOS[themeKey] || CURATED_PHOTOS.Smartphones;
+}
+
 const CATEGORY_THEMES = {
   Smartphones: {
     color: "#06b6d4",
@@ -140,22 +251,56 @@ export function buildDynamicProductSvg(meta = {}) {
 
 export function getProductImage(imageUrl, meta = {}) {
   const cleaned = typeof imageUrl === "string" ? imageUrl.trim() : "";
+  const title = typeof meta === "string" ? meta : meta?.title || meta?.product_title || "";
+  const brand = typeof meta === "object" ? meta?.brand || meta?.product_brand || "" : "";
+  const category = typeof meta === "object" ? meta?.category || meta?.product_category || "" : "";
+
+  // Valid remote URL or inline data URI
   if (
     cleaned &&
+    (cleaned.startsWith("http://") || cleaned.startsWith("https://") || cleaned.startsWith("data:image/")) &&
     !cleaned.includes("placehold.co") &&
     !cleaned.includes("product-placeholder.svg")
   ) {
     return cleaned;
   }
-  return buildDynamicProductSvg(meta);
+
+  // Pre-existing local SVG path from public/products/ (e.g. established seeds)
+  if (cleaned && cleaned.startsWith("/products/") && !cleaned.includes("product-placeholder.svg")) {
+    return cleaned;
+  }
+
+  // Fall back to curated real product photo
+  return getCuratedProductPhoto(title, brand, category);
 }
 
 export function handleImageError(e) {
   if (!e || !e.target) return;
-  if (e.target.dataset.fallback === "done") return;
-  e.target.dataset.fallback = "done";
+  const currentStep = e.target.dataset.fallbackStep || "";
   const title = e.target.alt || e.target.dataset.title || "DealLens Product";
   const brand = e.target.dataset.brand || "";
   const category = e.target.dataset.category || "";
-  e.target.src = buildDynamicProductSvg({ title, brand, category });
+
+  // Always ensure referrerPolicy is stripped
+  e.target.referrerPolicy = "no-referrer";
+
+  if (!currentStep) {
+    // Step 1: Fall back to curated real product photograph
+    e.target.dataset.fallbackStep = "photo";
+    const photo = getCuratedProductPhoto(title, brand, category);
+    if (photo && photo !== e.target.src) {
+      e.target.src = photo;
+      return;
+    }
+  }
+
+  if (currentStep === "photo") {
+    // Step 2: Fall back to inline SVG vector data URI (cannot fail over network)
+    e.target.dataset.fallbackStep = "svg";
+    e.target.src = buildDynamicProductSvg({ title, brand, category });
+    return;
+  }
+
+  // Final stop: Avoid infinite onError loops
+  e.target.dataset.fallbackStep = "done";
 }

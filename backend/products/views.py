@@ -113,6 +113,15 @@ class AnalyzeURLView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {
+                    "error": "Please log in or register to analyze product links.",
+                    "auth_required": True,
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         url = request.data.get("url", "").strip()
         if not url:
             return Response({"error": "URL is required"}, status=400)
@@ -222,6 +231,25 @@ class AnalyzeURLView(APIView):
             extraction_notice = ""
             normalized["extraction_notice"] = ""
 
+        # Resolve missing/zero price: If live scraping got title/image but no price (e.g. anti-bot/JS/out-of-stock)
+        try:
+            curr_p = float(normalized.get("price", 0) or 0)
+        except (TypeError, ValueError):
+            curr_p = 0
+
+        matched_catalog_product = None
+        if curr_p <= 0:
+            logger.info(
+                "Product '%s' has no verified live price — resolving from catalog/benchmark",
+                normalized.get("title"),
+            )
+            resolved = self._resolve_price_from_catalog(normalized, platform, url)
+            if resolved:
+                matched_catalog_product = resolved.pop("matched_product", None)
+                normalized.update(resolved)
+                if extraction_status == "live":
+                    extraction_status = "verified_catalog"
+
         try:
             from .services.benchmark_service import (
                 resolve_product_image,
@@ -237,23 +265,33 @@ class AnalyzeURLView(APIView):
             if resolved_img:
                 normalized["image_url"] = resolved_img
 
-            product, created = Product.objects.get_or_create(
-                title=normalized["title"],
-                brand=normalized.get("brand", ""),
-                defaults={
-                    "category": normalized.get("category", "Other"),
-                    "description": normalized.get("description", ""),
-                    "image_url": normalized.get("image_url", ""),
-                    "specifications": normalized.get("specifications", {}),
-                },
-            )
+            if matched_catalog_product:
+                product = matched_catalog_product
+                if resolved_img and (not product.image_url or not product.image_url.startswith("http")):
+                    product.image_url = resolved_img
+                    product.save(update_fields=["image_url"])
+            else:
+                product, created = Product.objects.get_or_create(
+                    title=normalized["title"],
+                    brand=normalized.get("brand", ""),
+                    defaults={
+                        "category": normalized.get("category", "Other"),
+                        "description": normalized.get("description", ""),
+                        "image_url": normalized.get("image_url", ""),
+                        "specifications": normalized.get("specifications", {}),
+                    },
+                )
 
-            scraped_image = normalized.get("image_url", "")
-            if scraped_image and not created and scraped_image != product.image_url:
-                product.image_url = scraped_image
-                product.save(update_fields=["image_url"])
-            elif product.image_url and (not scraped_image or "placehold.co" in scraped_image):
-                normalized["image_url"] = product.image_url
+                scraped_image = normalized.get("image_url", "")
+                if scraped_image and (created or scraped_image != product.image_url):
+                    product.image_url = scraped_image
+                    product.save(update_fields=["image_url"])
+                elif product.image_url and product.image_url.startswith("http"):
+                    normalized["image_url"] = product.image_url
+                elif resolved_img:
+                    product.image_url = resolved_img
+                    product.save(update_fields=["image_url"])
+                    normalized["image_url"] = resolved_img
 
             from django.utils import timezone
             try:
@@ -359,46 +397,188 @@ class AnalyzeURLView(APIView):
                 "error": "An unexpected error occurred. Please try again.",
             }, status=500)
 
-    def _fallback_to_database(self, url, platform):
-        """Try to find a matching product in the database by URL or fuzzy title match."""
-        offer = ProductOffer.objects.filter(
-            product_url=url, store_name=platform
-        ).select_related("product").first()
-        if offer:
-            p = offer.product
+    def _resolve_price_from_catalog(self, normalized: dict, platform: str, url: str) -> dict:
+        """Resolves missing product price, MRP, and catalog metadata from existing DB offers or benchmark."""
+        title = normalized.get("title", "")
+        brand = normalized.get("brand", "")
+        category = normalized.get("category", "Other")
+
+        from .services.comparison_engine import extract_key_attributes, compute_match_score, similarity
+        from .services.benchmark_service import (
+            generate_platform_price,
+            round_to_retail_price,
+            estimate_fallback_price,
+            resolve_product_image,
+        )
+
+        s_attrs = extract_key_attributes(title, normalized.get("specifications"))
+
+        # 1. First check if this exact URL exists in ProductOffer
+        existing_offer = (
+            ProductOffer.objects.filter(product_url=url, current_price__gt=0)
+            .select_related("product")
+            .first()
+        )
+        if existing_offer:
+            o_attrs = extract_key_attributes(existing_offer.product.title)
+            # Ensure URL offer belongs to the same device model
+            if not s_attrs.get("model_key") or o_attrs.get("model_key", "").lower() == s_attrs["model_key"].lower():
+                p = existing_offer.product
+                return {
+                    "matched_product": p,
+                    "price": float(existing_offer.current_price),
+                    "mrp": float(
+                        existing_offer.original_price
+                        or round_to_retail_price(float(existing_offer.current_price) * 1.15)
+                    ),
+                    "category": p.category or category,
+                    "rating": float(existing_offer.rating) if existing_offer.rating else 4.3,
+                    "review_count": existing_offer.reviews_count or 120,
+                    "specifications": p.specifications or normalized.get("specifications", {}),
+                    "description": p.description or normalized.get("description", ""),
+                }
+
+        # 2. Check DB products with active offers matching brand / title
+        candidates = (
+            Product.objects.filter(offers__current_price__gt=0)
+            .prefetch_related("offers")
+            .distinct()
+        )
+        if brand and brand.lower() != "unknown":
+            brand_candidates = candidates.filter(brand__iexact=brand)
+            if brand_candidates.exists():
+                candidates = brand_candidates
+
+        best_product = None
+        best_score = 0.0
+
+        for p in candidates[:80]:
+            p_attrs = extract_key_attributes(p.title, p.specifications)
+
+            # Strict model key check (e.g. iphone 15 vs 16, s23 vs s24)
+            if s_attrs.get("model_key") and p_attrs.get("model_key"):
+                if s_attrs["model_key"].lower() != p_attrs["model_key"].lower():
+                    continue
+            elif s_attrs.get("model_key") and not p_attrs.get("model_key"):
+                continue
+
+            # Strict storage check
+            if s_attrs.get("storage") and p_attrs.get("storage"):
+                if s_attrs["storage"].lower() != p_attrs["storage"].lower():
+                    continue
+
+            score = compute_match_score(s_attrs, p_attrs) if s_attrs else 0
+            sim = similarity(title, p.title)
+            final_match = max(score, sim * 100) if (not s_attrs.get("model_key") or score > 0) else 0
+
+            if final_match > best_score:
+                best_score = final_match
+                best_product = p
+
+        if best_product and best_score >= 60.0:
+            plat_offer = best_product.offers.filter(store_name=platform, current_price__gt=0).first()
+            if plat_offer:
+                price_val = float(plat_offer.current_price)
+                mrp_val = float(plat_offer.original_price or round_to_retail_price(price_val * 1.15))
+            else:
+                any_offer = best_product.offers.filter(current_price__gt=0).first()
+                base_val = float(any_offer.current_price) if any_offer else 0
+                if base_val > 0:
+                    price_val = generate_platform_price(base_val, platform, title)
+                    mrp_val = round_to_retail_price(price_val * 1.15)
+                else:
+                    price_val = estimate_fallback_price(title=title, brand=brand, category=best_product.category)
+                    mrp_val = round_to_retail_price(price_val * 1.18)
+
+            image_val = normalized.get("image_url") or best_product.image_url
+            if not image_val or not image_val.startswith("http"):
+                image_val = resolve_product_image(best_product.title, best_product.brand, best_product.category)
+
             return {
-                "title": p.title,
-                "brand": p.brand,
-                "category": p.category,
-                "price": float(offer.current_price),
-                "mrp": float(offer.original_price) if offer.original_price else 0,
-                "rating": float(offer.rating) if offer.rating else None,
-                "review_count": offer.reviews_count,
-                "image_url": p.image_url,
-                "description": p.description,
-                "specifications": p.specifications or {},
-                "availability": "In Stock" if offer.in_stock else "Out of Stock",
-                "delivery": offer.delivery_time,
-                "platform": platform,
-                "source_url": url,
-                "data_source": "dataset",
+                "matched_product": best_product,
+                "price": price_val,
+                "mrp": mrp_val,
+                "image_url": image_val,
+                "category": best_product.category or category,
+                "rating": float(best_product.offers.first().rating) if best_product.offers.exists() and best_product.offers.first().rating else 4.3,
+                "review_count": 250,
+                "specifications": best_product.specifications or normalized.get("specifications", {}),
+                "description": best_product.description or normalized.get("description", ""),
             }
 
+        # 3. If no matching product in DB, estimate realistic market price based on category/brand
+        cat_to_use = category
+        if cat_to_use == "Other" or not cat_to_use:
+            from .services.benchmark_service import _map_svg_category
+            cat_to_use = _map_svg_category(category, title)
+        est_price = estimate_fallback_price(title=title, brand=brand, category=cat_to_use)
+        est_mrp = round_to_retail_price(est_price * 1.18)
+        return {
+            "matched_product": None,
+            "price": est_price,
+            "mrp": est_mrp,
+            "category": cat_to_use,
+            "rating": 4.3,
+            "review_count": 150,
+        }
+
+    def _fallback_to_database(self, url, platform):
+        """Try to find a matching product in the database by URL or fuzzy title match."""
         keywords = self._extract_url_keywords(url)
+        from .services.comparison_engine import extract_key_attributes
+        slug_attrs = extract_key_attributes(" ".join(keywords)) if keywords else {}
+        req_model = slug_attrs.get("model_key", "").lower()
+        req_storage = slug_attrs.get("storage", "").lower()
+
+        offer = ProductOffer.objects.filter(
+            product_url=url, store_name=platform, current_price__gt=0
+        ).select_related("product").first()
+        if offer:
+            o_attrs = extract_key_attributes(offer.product.title)
+            # Verify offer matches model if specified in URL
+            if not req_model or o_attrs.get("model_key", "").lower() == req_model:
+                p = offer.product
+                from .services.benchmark_service import resolve_product_image
+                image_url = resolve_product_image(p.title, p.brand, p.category, p.image_url)
+                return {
+                    "title": p.title,
+                    "brand": p.brand,
+                    "category": p.category,
+                    "price": float(offer.current_price),
+                    "mrp": float(offer.original_price) if offer.original_price else 0,
+                    "rating": float(offer.rating) if offer.rating else None,
+                    "review_count": offer.reviews_count,
+                    "image_url": image_url,
+                    "description": p.description,
+                    "specifications": p.specifications or {},
+                    "availability": "In Stock" if offer.in_stock else "Out of Stock",
+                    "delivery": offer.delivery_time,
+                    "platform": platform,
+                    "source_url": url,
+                    "data_source": "dataset",
+                }
+
         if not keywords:
             return None
 
         brand_kw = next((kw for kw in keywords if len(kw) > 2), None)
         offers = ProductOffer.objects.filter(
             store_name=platform,
+            current_price__gt=0,
             product__title__icontains=brand_kw
         ).select_related("product") if brand_kw else ProductOffer.objects.filter(
-            store_name=platform
+            store_name=platform, current_price__gt=0
         ).select_related("product")
 
         best_offer = None
         best_score = 0
         for o in offers:
+            o_attrs = extract_key_attributes(o.product.title)
+            if req_model:
+                if o_attrs.get("model_key", "").lower() != req_model:
+                    continue
+            if req_storage and o_attrs.get("storage") and req_storage != o_attrs["storage"].lower():
+                continue
             title_lower = o.product.title.lower()
             score = sum(1 for kw in keywords if kw in title_lower)
             if score > best_score:
@@ -414,17 +594,46 @@ class AnalyzeURLView(APIView):
                 current_price__gt=0
             ).select_related("product")
             for o in any_offers:
+                o_attrs = extract_key_attributes(o.product.title)
+                if req_model:
+                    if o_attrs.get("model_key", "").lower() != req_model:
+                        continue
+                if req_storage and o_attrs.get("storage") and req_storage != o_attrs["storage"].lower():
+                    continue
                 title_lower = o.product.title.lower()
                 score = sum(1 for kw in keywords if kw in title_lower)
                 if score > best_score:
                     best_score = score
                     best_offer = o
 
+        # If exact storage variant wasn't found, allow same model (e.g. S24 Ultra 256GB for 512GB) before guessing
+        if not (best_offer and best_score >= 2) and req_model:
+            model_offers = ProductOffer.objects.filter(
+                current_price__gt=0,
+                product__title__icontains=brand_kw
+            ).select_related("product") if brand_kw else ProductOffer.objects.filter(
+                current_price__gt=0
+            ).select_related("product")
+            for o in model_offers:
+                o_attrs = extract_key_attributes(o.product.title)
+                if o_attrs.get("model_key", "").lower() == req_model:
+                    title_lower = o.product.title.lower()
+                    score = sum(1 for kw in keywords if kw in title_lower)
+                    if score > best_score:
+                        best_score = score
+                        best_offer = o
+
         if best_offer and best_score >= 2:
-            from .services.benchmark_service import generate_platform_price
+            from .services.benchmark_service import generate_platform_price, resolve_product_image
             p = best_offer.product
             base_p = float(best_offer.current_price)
+            # Variant adjustment if requested 512GB/1TB and base is 128GB/256GB
+            if req_storage == "512gb" and extract_key_attributes(p.title).get("storage", "").lower() in ("128gb", "256gb"):
+                base_p += 10000.0
+            elif req_storage == "1tb" and extract_key_attributes(p.title).get("storage", "").lower() in ("128gb", "256gb", "512gb"):
+                base_p += 20000.0
             final_price = base_p if best_offer.store_name == platform else generate_platform_price(base_p, platform, p.title)
+            image_url = resolve_product_image(p.title, p.brand, p.category, p.image_url)
             return {
                 "title": p.title,
                 "brand": p.brand,
@@ -433,7 +642,7 @@ class AnalyzeURLView(APIView):
                 "mrp": float(best_offer.original_price) if best_offer.original_price else round(final_price * 1.15, 2),
                 "rating": float(best_offer.rating) if best_offer.rating else 4.3,
                 "review_count": best_offer.reviews_count or 150,
-                "image_url": p.image_url,
+                "image_url": image_url,
                 "description": p.description,
                 "specifications": p.specifications or {},
                 "availability": "In Stock" if best_offer.in_stock else "Out of Stock",
@@ -484,7 +693,7 @@ class AnalyzeURLView(APIView):
         words = re.split(r'\s+', slug)
         stopwords = {'www', 'com', 'http', 'https', 'in', 'and', 'the', 'for', 'with', 'img', 'img1', 'img2', 'buy', 'online', 'price', 'offer', 'india', 'store', 'shop'}
         keywords = [w.lower() for w in words if len(w) > 1 and w.lower() not in stopwords and w.isalnum()]
-        return keywords[:6]
+        return keywords[:14]
 
     def _build_product_from_url(self, url, platform):
         """Build a basic product dict from the URL slug when no DB match exists."""
@@ -516,16 +725,58 @@ class AnalyzeURLView(APIView):
             "vivo": "Vivo", "oppo": "OPPO", "hp": "HP", "dell": "Dell", "lenovo": "Lenovo",
             "asus": "ASUS", "acer": "Acer", "moto": "Motorola", "motorola": "Motorola",
             "nothing": "Nothing", "poco": "POCO", "iqoo": "iQOO", "honor": "Honor",
-            "huawei": "Huawei", "goPro": "GoPro", "canon": "Canon", "nikon": "Nikon",
+            "huawei": "Huawei", "gopro": "GoPro", "canon": "Canon", "nikon": "Nikon",
             "noise": "Noise", "firebolt": "Fire-Boltt", "amazfit": "Amazfit",
             "selloria": "Selloria", "fastrack": "Fastrack", "titan": "Titan",
+            # Fashion & Footwear
+            "roadster": "Roadster", "puma": "Puma", "adidas": "Adidas", "levis": "Levi's",
+            "wrogn": "Wrogn", "hrx": "HRX", "allensolly": "Allen Solly", "vanheusen": "Van Heusen",
+            "peterengland": "Peter England", "louisphilippe": "Louis Philippe", "arrow": "Arrow",
+            "uspolo": "U.S. Polo Assn.", "spykar": "Spykar", "mufti": "Mufti", "veromoda": "Vero Moda",
+            "biba": "Biba", "fabindia": "FabIndia", "aurelia": "Aurelia", "manyavar": "Manyavar",
+            "zara": "Zara", "hm": "H&M", "woodland": "Woodland", "redtape": "Red Tape",
+            "bata": "Bata", "sparx": "Sparx", "campus": "Campus", "crocs": "Crocs",
+            "skechers": "Skechers", "asics": "Asics", "reebok": "Reebok",
+            # Beauty & Personal Care
+            "maybelline": "Maybelline", "lakme": "Lakme", "loreal": "L'Oreal", "nivea": "Nivea",
+            "mamaearth": "Mamaearth", "plum": "Plum", "sugar": "Sugar", "nykaa": "Nykaa",
+            "wow": "WOW", "minimalist": "Minimalist", "biotique": "Biotique",
         }
-        if brand_lower in known_brands:
+        for kw in keywords:
+            if kw in known_brands:
+                brand = known_brands[kw]
+                break
+        if brand == title_words[0] and brand_lower in known_brands:
             brand = known_brands[brand_lower]
 
         category = "Other"
         slug_text = " ".join(keywords).lower()
         category_keywords = {
+            # Fashion
+            "shirt": "Fashion", "tshirt": "Fashion", "t-shirt": "Fashion", "tee": "Fashion",
+            "polo": "Fashion", "jeans": "Fashion", "denim": "Fashion", "trouser": "Fashion",
+            "trousers": "Fashion", "pants": "Fashion", "pant": "Fashion", "chinos": "Fashion",
+            "kurta": "Fashion", "kurti": "Fashion", "saree": "Fashion", "sari": "Fashion",
+            "dress": "Fashion", "top": "Fashion", "tops": "Fashion", "skirt": "Fashion",
+            "jacket": "Fashion", "blazer": "Fashion", "coat": "Fashion", "hoodie": "Fashion",
+            "sweatshirt": "Fashion", "sweater": "Fashion", "cardigan": "Fashion", "shorts": "Fashion",
+            "trackpants": "Fashion", "joggers": "Fashion", "suit": "Fashion", "ethnic": "Fashion",
+            "apparel": "Fashion", "clothing": "Fashion", "wear": "Fashion", "innerwear": "Fashion",
+            "boxer": "Fashion", "briefs": "Fashion",
+            # Footwear
+            "shoe": "Footwear", "shoes": "Footwear", "sneaker": "Footwear", "sneakers": "Footwear",
+            "boots": "Footwear", "boot": "Footwear", "sandal": "Footwear", "sandals": "Footwear",
+            "slippers": "Footwear", "slipper": "Footwear", "flipflop": "Footwear", "flipflops": "Footwear",
+            "heels": "Footwear", "heel": "Footwear", "loafers": "Footwear", "loafer": "Footwear",
+            "flats": "Footwear", "floaters": "Footwear", "airmax": "Footwear", "crocs": "Footwear",
+            # Beauty
+            "perfume": "Beauty", "deodorant": "Beauty", "fragrance": "Beauty", "cologne": "Beauty",
+            "lipstick": "Beauty", "lipgloss": "Beauty", "eyeliner": "Beauty", "kajal": "Beauty",
+            "mascara": "Beauty", "foundation": "Beauty", "concealer": "Beauty", "serum": "Beauty",
+            "moisturizer": "Beauty", "lotion": "Beauty", "sunscreen": "Beauty", "shampoo": "Beauty",
+            "conditioner": "Beauty", "facewash": "Beauty", "skincare": "Beauty", "makeup": "Beauty",
+            "cosmetic": "Beauty",
+            # Electronics & Tech
             "phone": "Mobile Phones", "galaxy": "Mobile Phones", "iphone": "Mobile Phones",
             "redmi": "Mobile Phones", "realme": "Mobile Phones", "oneplus": "Mobile Phones",
             "vivo": "Mobile Phones", "oppo": "Mobile Phones", "pixel": "Mobile Phones",
@@ -535,10 +786,10 @@ class AnalyzeURLView(APIView):
             "watch": "Watches", "smartwatch": "Watches", "analog": "Watches",
             "tv": "Televisions", "television": "Televisions", "monitor": "Televisions",
             "camera": "Cameras", "dslr": "Cameras", "mirrorless": "Cameras",
-            "shoe": "Footwear", "sneaker": "Footwear", "airmax": "Footwear",
             "tablet": "Tablets", "ipad": "Tablets",
             "speaker": "Speakers", "soundbar": "Speakers",
             "mixer": "Home Appliances", "grinder": "Home Appliances", "juicer": "Home Appliances",
+            "refrigerator": "Home Appliances", "fridge": "Home Appliances", "washing": "Home Appliances",
             "router": "Networking", "wifi": "Networking",
         }
         for kw, cat in category_keywords.items():

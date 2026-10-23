@@ -91,17 +91,42 @@ def extract_json_ld(soup) -> dict:
                 found["description"] = str(node["description"]).strip()[:1000]
 
             offers = node.get("offers")
-            if isinstance(offers, list):
-                offers = offers[0] if offers else {}
-            if isinstance(offers, dict):
+            offer_list = offers if isinstance(offers, list) else ([offers] if isinstance(offers, dict) else [])
+            best_offer = None
+            for off in offer_list:
+                if isinstance(off, dict) and _parse_price(off.get("price")):
+                    best_offer = off
+                    break
+            if not best_offer and offer_list:
+                best_offer = offer_list[0] if isinstance(offer_list[0], dict) else {}
+
+            if isinstance(best_offer, dict):
                 if found.get("price") is None:
-                    found["price"] = _parse_price(offers.get("price"))
-                if not found.get("currency") and offers.get("priceCurrency"):
-                    found["currency"] = str(offers["priceCurrency"]).strip().upper()
+                    found["price"] = _parse_price(best_offer.get("price"))
+                if not found.get("currency") and best_offer.get("priceCurrency"):
+                    found["currency"] = str(best_offer["priceCurrency"]).strip().upper()
                 if not found.get("availability"):
-                    found["availability"] = _clean_availability(offers.get("availability"))
-                if not found.get("product_url") and offers.get("url"):
-                    found["product_url"] = str(offers["url"]).strip()
+                    found["availability"] = _clean_availability(best_offer.get("availability"))
+                if not found.get("product_url") and best_offer.get("url"):
+                    found["product_url"] = str(best_offer["url"]).strip()
+
+                # Check priceSpecification for MRP
+                price_spec = best_offer.get("priceSpecification")
+                if isinstance(price_spec, list):
+                    for spec in price_spec:
+                        if isinstance(spec, dict) and "price" in spec:
+                            p_type = str(spec.get("priceType", "")).lower()
+                            if "list" in p_type or "mrp" in p_type or "original" in p_type:
+                                found.setdefault("original_price", _parse_price(spec.get("price")))
+                elif isinstance(price_spec, dict) and "price" in price_spec:
+                    found.setdefault("original_price", _parse_price(price_spec.get("price")))
+
+            if node.get("category") and not found.get("category"):
+                found["category"] = str(node["category"]).strip()
+
+            # If MRP wasn't in offers, check if highPrice exists
+            if isinstance(offers, dict) and offers.get("highPrice") and not found.get("original_price"):
+                found["original_price"] = _parse_price(offers.get("highPrice"))
 
             rating = node.get("aggregateRating")
             if isinstance(rating, dict):
@@ -152,6 +177,8 @@ def extract_meta(soup) -> dict:
     if image:
         if image.startswith("//"):
             image = "https:" + image
+        if "flixcart.com/image/" in image:
+            image = re.sub(r"/image/\d+/\d+/", "/image/832/832/", image)
         found["image_url"] = image
     price = content(
         'meta[property="product:price:amount"]',
@@ -292,15 +319,36 @@ def extract_embedded_state(soup) -> dict:
             raw = script.string or ""
             if not raw or len(raw) < 40:
                 continue
-            for marker in ("window.__INITIAL_STATE__", "window.__PRELOADED_STATE__", "window.__myx"):
+            for marker in ("window.__INITIAL_STATE__", "window.__PRELOADED_STATE__", "window.__myx", "__INITIAL_DATA__"):
                 if marker in raw:
-                    m = re.search(re.escape(marker) + r"\s*=\s*(\{.*?\})\s*(?:;|</script>|$)", raw, re.S)
-                    if m:
-                        try:
-                            state_obj = json.loads(m.group(1))
-                            _walk_state_for_product(state_obj, found)
-                        except Exception:
-                            pass
+                    idx = raw.find(marker)
+                    eq_idx = raw.find("=", idx)
+                    if eq_idx != -1:
+                        brace_start = raw.find("{", eq_idx)
+                        if brace_start != -1:
+                            depth = 0
+                            end_pos = -1
+                            in_string = False
+                            escape = False
+                            for i, ch in enumerate(raw[brace_start:], brace_start):
+                                if ch == '"' and not escape:
+                                    in_string = not in_string
+                                elif not in_string:
+                                    if ch == '{':
+                                        depth += 1
+                                    elif ch == '}':
+                                        depth -= 1
+                                        if depth == 0:
+                                            end_pos = i + 1
+                                            break
+                                escape = (ch == '\\' and not escape)
+
+                            if end_pos != -1:
+                                try:
+                                    state_obj = json.loads(raw[brace_start:end_pos])
+                                    _walk_state_for_product(state_obj, found)
+                                except Exception:
+                                    pass
             if found.get("product_name") and found.get("price"):
                 break
 

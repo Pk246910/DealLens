@@ -167,42 +167,41 @@ def run_standard(*, platform: str, url: str, cfg: dict) -> ExtractedProduct:
     """Execute L2→L5 for one platform. Never raises; FAILED result on block."""
     result = ExtractedProduct(platform=platform, product_url=url,
                               source=SOURCE_LIVE_EXTRACTION)
+    html = None
     try:
         html = fetch(url)
     except ExtractionError as e:
         result.reason = str(e)
-        return result
     except Exception as e:
         result.reason = f"Fetch failed: {str(e)[:150]}"
-        return result
 
-    soup = BeautifulSoup(html, "html.parser")
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+        structured = extract_json_ld(soup)
+        embedded = extract_embedded_state(soup)
+        meta = extract_meta(soup)
+        merged = {**meta, **embedded, **structured}
+        for key, value in merged.items():
+            if value is not None and getattr(result, key, None) in (None, "", 0):
+                setattr(result, key, value)
+        if result.product_name and result.price is not None:
+            result.extraction_method = (
+                METHOD_JSON_LD if (structured.get("product_name") or embedded.get("product_name"))
+                else METHOD_METADATA
+            )
 
-    structured = extract_json_ld(soup)
-    embedded = extract_embedded_state(soup)
-    meta = extract_meta(soup)
-    merged = {**meta, **embedded, **structured}
-    for key, value in merged.items():
-        if value is not None and getattr(result, key, None) in (None, "", 0):
-            setattr(result, key, value)
-    if result.product_name and result.price is not None:
-        result.extraction_method = (
-            METHOD_JSON_LD if (structured.get("product_name") or embedded.get("product_name"))
-            else METHOD_METADATA
-        )
-
-    if _apply_selectors(result, soup, cfg) and result.extraction_method == METHOD_NONE:
-        if result.product_name or result.price is not None:
-            result.extraction_method = METHOD_CSS_SELECTOR
+        if _apply_selectors(result, soup, cfg) and result.extraction_method == METHOD_NONE:
+            if result.product_name or result.price is not None:
+                result.extraction_method = METHOD_CSS_SELECTOR
 
     result.product_id = _extract_id(url, cfg.get("id_patterns", []))
 
     if not result.product_name and browser_available():
         rendered = browser_render(url, wait_selector=cfg.get("wait_selector"))
-        if rendered["blocked"]:
-            result.reason = rendered["reason"] or "Automated access blocked."
-            return result
-        if rendered["html"]:
+        if rendered.get("blocked"):
+            if not result.reason:
+                result.reason = rendered.get("reason") or "Automated access blocked."
+        elif rendered.get("html"):
             rsoup = BeautifulSoup(rendered["html"], "html.parser")
             r_struct = extract_json_ld(rsoup)
             r_embed = extract_embedded_state(rsoup)
@@ -213,8 +212,7 @@ def run_standard(*, platform: str, url: str, cfg: dict) -> ExtractedProduct:
             _apply_selectors(result, rsoup, cfg)
             if result.product_name:
                 result.extraction_method = METHOD_BROWSER
-        elif not result.reason:
-            result.reason = rendered["reason"]
+                result.reason = ""
 
     if not result.product_name and not result.reason:
         result.reason = "No product data found on the page."

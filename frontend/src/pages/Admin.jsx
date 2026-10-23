@@ -712,6 +712,9 @@ const Admin = () => {
                             <img
                               src={getProductImage(p.image_url, p)}
                               alt={p.title || "Product"}
+                              data-brand={p.brand || ""}
+                              data-category={p.category || ""}
+                              referrerPolicy="no-referrer"
                               onError={handleImageError}
                               style={{
                                 width: 40,
@@ -846,6 +849,9 @@ const Admin = () => {
                                 category: al.product_category,
                               })}
                               alt={al.product_title || "Product"}
+                              data-brand={al.product_brand || ""}
+                              data-category={al.product_category || ""}
+                              referrerPolicy="no-referrer"
                               onError={handleImageError}
                               style={{
                                 width: 40,
@@ -1683,8 +1689,11 @@ const Admin = () => {
                               </td>
                               <td>
                                 <img
-                                  src={getProductImage(p.image_url)}
-                                  alt=""
+                                  src={getProductImage(p.image_url, p)}
+                                  alt={p.title || "Product"}
+                                  data-brand={p.brand || ""}
+                                  data-category={p.category || ""}
+                                  referrerPolicy="no-referrer"
                                   onError={handleImageError}
                                   style={{
                                     width: 42,

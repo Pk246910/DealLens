@@ -34,9 +34,17 @@ Developed as a **BCA Final Year Project** by **Punit Kumar**.
 
 ## 🚀 Key Features
 
-### 🛒 1. 8-Marketplace Real-Time Extraction
-- **Supported Platforms:** Amazon India, Flipkart, Myntra, AJIO, Meesho, Croma, Reliance Digital, and Tata CLiQ.
-- Universal scraper architecture with schema parsing, metadata fallback, currency normalization, stock availability detection, and broken image resolution.
+### 🛒 1. Universal Multi-Platform & All-Category Real-Time Extraction
+- **Supported Platforms:** Amazon India, Flipkart, Myntra, AJIO, Meesho, Croma, Reliance Digital, Tata CLiQ, Nykaa, JioMart, Snapdeal, Vijay Sales, plus any online retail store via the layered Universal Extractor adapter.
+- **Universal Multi-Category Support:** Automatic domain and keyword classification across:
+  - **Fashion & Apparel:** Shirts, T-shirts, Jeans, Kurtas, Sarees, Dresses, Jackets, Hoodies, Ethnic Wear.
+  - **Footwear:** Sneakers, Casual Shoes, Formal Shoes, Sandals, Crocs, Slippers, Boots.
+  - **Beauty & Personal Care:** Perfumes, Fragrances, Skincare, Serums, Lipsticks, Makeup, Shampoos.
+  - **Electronics & Tech:** Smartphones, Laptops, Earbuds, Headphones, Smartwatches, Tablets, Cameras, TVs.
+  - **Home & Kitchen Appliances:** Refrigerators, Washing Machines, Air Conditioners, Mixers, Air Fryers.
+  - **Groceries & Gaming:** Essentials, Snacks, Consoles, Gaming Accessories.
+- **Authentic Listing Extraction:** Extracts real live selling price, verified MRP, authentic star rating, review volume count, delivery timeframes, stock availability, and high-resolution CDN/Rukmini product imagery.
+- **Mandatory User Authentication:** Analyzing URLs requires user registration or login. Unauthenticated visitors are presented with a clear authentication badge and seamless redirect to `/login` with pending URL preservation.
 
 ### 🧠 2. 8-Factor Explainable Deal Decision Engine
 - Deterministic, explainable 0–100 **Deal Score** calculation based on 8 weighted consumer dimensions:
@@ -120,7 +128,7 @@ flowchart TD
 
     subgraph Backend["Django 5 + DRF Backend"]
         REST["REST API Endpoints\n(products, users, admin, analytics)"]
-        EXTRACT["Multi-Store Ingestion Engine\n(8 Indian Marketplace Scrapers)"]
+        EXTRACT["Universal Ingestion Engine\n(12+ Marketplaces & Universal Adapter)"]
         AI_ENGINE["8-Factor Weighted Decision Engine\n(Deterministic Deal Score: 0-100)"]
         SCHEDULER["Price History & Alert Evaluator"]
         REPORT_SVC["30-Day Operational Report Service\n(CSV/HTML Exporter & Disk Archival)"]
@@ -340,13 +348,13 @@ docker compose up --build
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :---: | :--- |
 | `GET` | `/api/health/` | Public | Liveness probe returning service status |
-| `GET` | `/api/supported-platforms/` | Public | Lists all 8 supported Indian e-commerce platforms |
+| `GET` | `/api/supported-platforms/` | Public | Lists all 12+ supported Indian platforms (Amazon, Flipkart, Myntra, AJIO, Meesho, Croma, Reliance Digital, Tata CLiQ, Nykaa, JioMart, Snapdeal, Vijay Sales, + Universal) |
 | `GET` | `/api/categories/` | Public | Lists catalog product categories |
 
 ### 2. Products & Price Analysis
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :---: | :--- |
-| `POST` | `/api/analyze-url/` | Public | Ingests e-commerce URL, runs 8-factor AI engine, returns best deal |
+| `POST` | `/api/analyze-url/` | JWT (Login/Register Required) | Ingests e-commerce URL across 12+ stores & all categories, extracts real verified details, runs 8-factor AI engine, returns best deal |
 | `GET` | `/api/analyses/` | Public / Guest | Historical URL analysis records with guest tracking |
 | `GET` | `/api/products/` | Public | Paginated product catalog with platform price filters |
 | `GET` | `/api/products/:id/` | Public | Product specifications, best offer, and multi-store listing |

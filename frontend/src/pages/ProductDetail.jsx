@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   LineChart,
@@ -25,6 +25,7 @@ import MarketplaceComparisonCards from "../components/MarketplaceComparisonCards
 import { SkeletonProductDetail } from "../components/Skeleton";
 import { getProductImage, handleImageError } from "../utils/images";
 import { getPlatformColor, getOfficialStoreUrl } from "../utils/platforms";
+import { computeYDomain, formatPriceTick } from "../utils/chartUtils";
 import toast from "react-hot-toast";
 
 const CHART_COLORS = {
@@ -207,6 +208,14 @@ const ProductDetail = () => {
       existing[cur.store_name] = Number(cur.price);
       return acc;
     }, []);
+
+  const yDomain = useMemo(() => {
+    if (!chartData || chartData.length === 0) return [0, "auto"];
+    const prices = chartData.flatMap((row) =>
+      visibleStores.map((s) => row[s]).filter((p) => typeof p === "number" && p > 0)
+    );
+    return computeYDomain(prices);
+  }, [chartData, visibleStores]);
 
   return (
     <div className="page-container" style={{ paddingTop: "2rem" }}>
@@ -437,27 +446,43 @@ const ProductDetail = () => {
 
           {/* Store Filter Chips */}
           {allStores.length > 1 && (
-            <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
               {allStores.map((s) => {
                 const isHidden = hiddenStores.includes(s);
+                const color = CHART_COLORS[s] || getPlatformColor(s, "var(--accent-cyan)");
                 return (
                   <button
                     key={s}
                     onClick={() => toggleStore(s)}
                     style={{
-                      padding: "0.25rem 0.6rem",
-                      borderRadius: "6px",
-                      border: "1px solid var(--border-color)",
-                      background: isHidden ? "transparent" : "var(--bg-card)",
+                      padding: "0.25rem 0.65rem",
+                      borderRadius: "999px",
+                      border: `1.5px solid ${color}${isHidden ? "33" : "aa"}`,
+                      background: isHidden ? "transparent" : `${color}18`,
                       color: isHidden ? "var(--text-muted)" : "var(--text-primary)",
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
                       cursor: "pointer",
                       opacity: isHidden ? 0.45 : 1,
-                      textDecoration: isHidden ? "line-through" : "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      transition: "all 0.15s ease",
                     }}
+                    title={isHidden ? `Show ${s}` : `Hide ${s}`}
                   >
-                    {s}
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: color,
+                        display: "inline-block",
+                        opacity: isHidden ? 0.4 : 1,
+                      }}
+                    />
+                    <span>{s}</span>
+                    <span style={{ fontSize: "0.68rem" }}>{isHidden ? "＋" : "✓"}</span>
                   </button>
                 );
               })}
@@ -472,23 +497,39 @@ const ProductDetail = () => {
         ) : chartData.length > 0 ? (
           <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
-                <XAxis dataKey="date" tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
+              <LineChart data={chartData} margin={{ top: 12, right: 20, left: 10, bottom: 6 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" opacity={0.6} />
+                <XAxis
+                  dataKey="date"
+                  stroke="var(--text-muted)"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={{ stroke: "var(--border-subtle)" }}
+                  minTickGap={28}
+                  interval="preserveStartEnd"
+                />
                 <YAxis
-                  tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                  domain={yDomain}
+                  tickCount={6}
+                  width={64}
+                  stroke="var(--text-muted)"
+                  fontSize={11}
+                  fontFamily="var(--font-mono, monospace)"
+                  tickLine={false}
+                  axisLine={{ stroke: "var(--border-subtle)" }}
+                  tickFormatter={(v) => formatPriceTick(v, yDomain[0], yDomain[1])}
                 />
                 <Tooltip
-                  formatter={(v) => `₹${Number(v).toLocaleString("en-IN")}`}
+                  formatter={(v, name) => [`₹${Number(v).toLocaleString("en-IN")}`, name]}
                   contentStyle={{
                     background: "var(--bg-secondary)",
                     border: "1px solid var(--border-color)",
                     borderRadius: "10px",
                     fontSize: "0.85rem",
+                    boxShadow: "var(--shadow-card)",
                   }}
+                  labelStyle={{ color: "var(--text-primary)", fontWeight: 800, marginBottom: "0.3rem" }}
                 />
-                <Legend />
                 {visibleStores.map((s) => (
                   <Line
                     key={s}

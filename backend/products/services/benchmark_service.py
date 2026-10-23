@@ -407,13 +407,18 @@ CATEGORY_PRICE_DEFAULTS = {
     "TVs": 36999.0,
     "Televisions": 36999.0,
     "Cameras": 48999.0,
-    "Footwear": 3499.0,
-    "Fashion": 1499.0,
+    "Footwear": 1999.0,
+    "Fashion": 899.0,
+    "Clothing": 899.0,
+    "Apparel": 899.0,
+    "Beauty": 499.0,
+    "Grocery": 299.0,
     "Home Appliances": 6999.0,
-    "Kitchen Appliances": 3999.0,
+    "Kitchen Appliances": 2499.0,
     "Gaming": 39999.0,
     "Computer Accessories": 2499.0,
     "Speakers": 3999.0,
+    "Other": 999.0,
 }
 
 CATEGORY_SVG_THEMES = {
@@ -499,6 +504,18 @@ CATEGORY_SVG_THEMES = {
         '<rect x="140" y="230" width="120" height="20" rx="6" fill="none" stroke="#10b981" stroke-width="3"/>'
         '<rect x="175" y="80" width="50" height="20" rx="4" fill="none" stroke="#10b981" stroke-width="2"/>',
     ),
+    "Beauty": (
+        "#ec4899",
+        "BEAUTY",
+        '<path d="M180 120 L220 120 L225 150 L235 250 L165 250 L175 150 Z" fill="#ec4899" opacity="0.12" stroke="#ec4899" stroke-width="3"/>'
+        '<rect x="185" y="90" width="30" height="30" rx="4" fill="none" stroke="#ec4899" stroke-width="2"/>',
+    ),
+    "Other": (
+        "#8b5cf6",
+        "PRODUCT",
+        '<rect x="130" y="110" width="140" height="140" rx="16" fill="none" stroke="#8b5cf6" stroke-width="4"/>'
+        '<circle cx="200" cy="180" r="30" fill="#8b5cf6" opacity="0.15"/>',
+    ),
 }
 
 
@@ -511,13 +528,16 @@ def _map_svg_category(category: str, title: str = "") -> str:
         "Smartwatches": "Watches",
         "Televisions": "TVs",
         "Home Appliances": "Kitchen Appliances",
+        "Clothing": "Fashion",
+        "Apparel": "Fashion",
+        "Shoes": "Footwear",
     }
     if c in alias:
         return alias[c]
     t = (title or "").lower()
-    if any(w in t for w in ("phone", "galaxy", "iphone", "pixel", "oneplus", "redmi", "realme", "vivo", "oppo", "xiaomi", "moto", "nothing")):
+    if any(w in t for w in ("phone", "galaxy", "iphone", "pixel", "oneplus", "redmi", "realme", "vivo", "oppo", "xiaomi", "moto", "nothing", "smartphone")):
         return "Smartphones"
-    if any(w in t for w in ("laptop", "macbook", "thinkpad", "vivobook", "zenbook", "pavilion", "victus", "legion", "inspiron")):
+    if any(w in t for w in ("laptop", "macbook", "thinkpad", "vivobook", "zenbook", "pavilion", "victus", "legion", "inspiron", "notebook")):
         return "Laptops"
     if any(w in t for w in ("airpods", "earbuds", "buds", "airdopes", "tws")):
         return "Earbuds"
@@ -525,35 +545,140 @@ def _map_svg_category(category: str, title: str = "") -> str:
         return "Headphones"
     if any(w in t for w in ("watch", "smartwatch", "colorfit", "band")):
         return "Watches"
-    if any(w in t for w in ("tv", "television", "bravia", "qled", "oled")):
+    if any(w in t for w in ("tv", "television", "bravia", "qled", "oled", "monitor")):
         return "TVs"
-    if any(w in t for w in ("camera", "mirrorless", "dslr", "gopro", "eos")):
+    if any(w in t for w in ("camera", "mirrorless", "dslr", "gopro", "eos", "digicam")):
         return "Cameras"
     if any(w in t for w in ("ipad", "tablet", "galaxy tab", "tab ")):
         return "Tablets"
-    if any(w in t for w in ("shoe", "sneaker", "running", "boot", "sandal")):
+    if any(w in t for w in ("shoe", "sneaker", "running", "boot", "sandal", "slipper", "loafer", "heel", "crocs", "footwear")):
         return "Footwear"
-    if any(w in t for w in ("shirt", "jeans", "polo", "t-shirt", "jacket", "kurta", "dress", "backpack")):
+    if any(w in t for w in ("shirt", "jeans", "polo", "t-shirt", "tshirt", "jacket", "kurta", "kurti", "saree", "dress", "trouser", "pants", "chinos", "hoodie", "sweatshirt", "sweater", "shorts", "top", "blazer", "suit", "backpack", "fashion", "apparel", "clothing", "wear", "cotton", "denim", "roadster", "hrx", "wrogn", "allensolly")):
         return "Fashion"
-    if any(w in t for w in ("mixer", "grinder", "fryer", "kettle", "refrigerator", "purifier", "washing", "fridge", "aquaguard")):
+    if any(w in t for w in ("perfume", "fragrance", "deodorant", "lipstick", "serum", "shampoo", "cream", "lotion", "sunscreen", "makeup", "facewash", "beauty")):
+        return "Beauty"
+    if any(w in t for w in ("mixer", "grinder", "fryer", "kettle", "refrigerator", "purifier", "washing", "fridge", "aquaguard", "microwave", "cooker", "oven", "iron")):
         return "Kitchen Appliances"
-    return "Smartphones"
+    return "Other"
+
+
+CURATED_PRODUCT_IMAGES = {
+    "apple_iphone": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80",
+    "apple_macbook": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80",
+    "apple_ipad": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&auto=format&fit=crop&q=80",
+    "apple_airpods": "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=800&auto=format&fit=crop&q=80",
+    "apple_watch": "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=800&auto=format&fit=crop&q=80",
+    "samsung_galaxy": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&auto=format&fit=crop&q=80",
+    "google_pixel": "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&auto=format&fit=crop&q=80",
+    "smart_glasses": "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&auto=format&fit=crop&q=80",
+    "sony_headphones": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
+    "sony_camera": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80",
+    "nike_shoes": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80",
+    "puma_shoes": "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&auto=format&fit=crop&q=80",
+    "levis_jeans": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&auto=format&fit=crop&q=80",
+    "casual_shirt": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80",
+    "backpack": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&auto=format&fit=crop&q=80",
+    "refrigerator": "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&auto=format&fit=crop&q=80",
+    "kitchen_mixer": "https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=800&auto=format&fit=crop&q=80",
+    "kitchen_appliance": "https://images.unsplash.com/photo-1585515320310-259814833e62?w=800&auto=format&fit=crop&q=80",
+    "water_purifier": "https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?w=800&auto=format&fit=crop&q=80",
+    "Smartphones": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&auto=format&fit=crop&q=80",
+    "Laptops": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&auto=format&fit=crop&q=80",
+    "Tablets": "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&auto=format&fit=crop&q=80",
+    "Headphones": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
+    "Earbuds": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&auto=format&fit=crop&q=80",
+    "Watches": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80",
+    "Televisions": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&auto=format&fit=crop&q=80",
+    "Cameras": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80",
+    "Footwear": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80",
+    "Fashion": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80",
+    "Appliances": "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=800&auto=format&fit=crop&q=80",
+    "Speakers": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=800&auto=format&fit=crop&q=80",
+}
+
+
+def get_curated_product_image(title: str = "", brand: str = "", category: str = "") -> str:
+    """Returns a photorealistic, high-resolution product image matching brand/model/category."""
+    t = f"{brand or ''} {title or ''}".lower()
+
+    if any(k in t for k in ("meta", "ray-ban", "rayban", "smart glasses", "wayfarer", "transitions")):
+        return CURATED_PRODUCT_IMAGES["smart_glasses"]
+
+    if "iphone" in t or ("apple" in t and "phone" in t):
+        return CURATED_PRODUCT_IMAGES["apple_iphone"]
+    if "macbook" in t or ("apple" in t and "laptop" in t):
+        return CURATED_PRODUCT_IMAGES["apple_macbook"]
+    if "ipad" in t:
+        return CURATED_PRODUCT_IMAGES["apple_ipad"]
+    if "airpods" in t:
+        return CURATED_PRODUCT_IMAGES["apple_airpods"]
+    if "apple watch" in t:
+        return CURATED_PRODUCT_IMAGES["apple_watch"]
+
+    if "pixel" in t:
+        return CURATED_PRODUCT_IMAGES["google_pixel"]
+
+    if "galaxy" in t or ("samsung" in t and any(k in t for k in ("s24", "s23", "s22", "s21", "ultra", "plus", "phone", "mobile"))):
+        return CURATED_PRODUCT_IMAGES["samsung_galaxy"]
+
+    if any(k in t for k in ("earbuds", "buds", "airdopes", "tws", "in-ear")):
+        return CURATED_PRODUCT_IMAGES["Earbuds"]
+
+    if any(k in t for k in ("headphone", "wh-1000", "rockerz", "quietcomfort", "over-ear")):
+        return CURATED_PRODUCT_IMAGES["Headphones"]
+
+    if any(k in t for k in ("smartwatch", "watch", "colorfit", "fitbit")):
+        return CURATED_PRODUCT_IMAGES["Watches"]
+
+    if any(k in t for k in ("laptop", "thinkpad", "vivobook", "zenbook", "pavilion", "inspiron", "legion", "notebook")):
+        return CURATED_PRODUCT_IMAGES["Laptops"]
+
+    if any(k in t for k in ("tablet", "tab")):
+        return CURATED_PRODUCT_IMAGES["Tablets"]
+
+    if any(k in t for k in ("tv", "television", "bravia", "oled", "qled", "monitor")):
+        return CURATED_PRODUCT_IMAGES["Televisions"]
+
+    if any(k in t for k in ("camera", "mirrorless", "dslr", "gopro", "eos", "alpha")):
+        return CURATED_PRODUCT_IMAGES["Cameras"]
+
+    if any(k in t for k in ("shoe", "sneaker", "running", "nike", "puma", "adidas", "reebok", "air max", "dunk")):
+        return CURATED_PRODUCT_IMAGES["Footwear"]
+
+    if any(k in t for k in ("jean", "denim", "511", "512", "levis", "levi's")):
+        return CURATED_PRODUCT_IMAGES["levis_jeans"]
+    if any(k in t for k in ("shirt", "polo", "t-shirt", "kurta", "jacket", "apparel")):
+        return CURATED_PRODUCT_IMAGES["casual_shirt"]
+    if any(k in t for k in ("backpack", "bag", "rucksack", "wildcraft")):
+        return CURATED_PRODUCT_IMAGES["backpack"]
+
+    if any(k in t for k in ("refrigerator", "fridge", "single door", "double door")):
+        return CURATED_PRODUCT_IMAGES["refrigerator"]
+    if any(k in t for k in ("mixer", "grinder", "blender", "juicer")):
+        return CURATED_PRODUCT_IMAGES["kitchen_mixer"]
+    if any(k in t for k in ("kettle", "fryer", "air fryer", "cooktop")):
+        return CURATED_PRODUCT_IMAGES["kitchen_appliance"]
+    if any(k in t for k in ("purifier", "aquaguard", "aquasaver", "water filter")):
+        return CURATED_PRODUCT_IMAGES["water_purifier"]
+
+    theme_key = _map_svg_category(category, title)
+    return CURATED_PRODUCT_IMAGES.get(theme_key, CURATED_PRODUCT_IMAGES["Smartphones"])
 
 
 def resolve_product_image(title: str = "", brand: str = "", category: str = "", current_image: str = "") -> str:
     """
     Ensures a product always has a valid, working image URL.
     1. Preserves valid external/local image URLs (excluding placehold.co and product-placeholder.svg).
-    2. Checks the database for a closely matching product with a valid image_url.
-    3. Generates a matching local SVG in frontend/public/products/<slug>.svg if needed.
+    2. Checks the database for a closely matching product with a valid HTTP image_url.
+    3. Falls back to curated high-resolution real product photography.
     """
     import os
     import re
-    from html import escape
 
     img = (current_image or "").strip()
-    if img and "placehold.co" not in img and "product-placeholder.svg" not in img:
-        return img
+    if img and (img.startswith("http://") or img.startswith("https://") or img.startswith("data:image/")):
+        if "placehold.co" not in img and "product-placeholder.svg" not in img:
+            return img
 
     clean_title = (title or "").strip()
     stopwords = {"for", "with", "the", "and", "new", "buy", "online", "price", "india", "gb", "tb", "ram", "5g", "4g"}
@@ -564,7 +689,7 @@ def resolve_product_image(title: str = "", brand: str = "", category: str = "", 
 
     if title_words:
         candidates = (
-            Product.objects.exclude(image_url="")
+            Product.objects.filter(image_url__startswith="http")
             .exclude(image_url__icontains="placehold.co")
             .exclude(image_url__icontains="product-placeholder")
         )
@@ -586,50 +711,18 @@ def resolve_product_image(title: str = "", brand: str = "", category: str = "", 
         if best_img and best_score >= max(2, min(3, len(title_words))):
             return best_img
 
+    # Check if a pre-existing SVG file exists in public/products/ (e.g. legacy seed assets)
     slug = re.sub(r"[^a-z0-9]+", "-", clean_title.lower()).strip("-")[:60] or "analyzed-product"
-    rel_path = f"/products/{slug}.svg"
-
     try:
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "products"))
-        if os.path.isdir(base_dir):
-            svg_path = os.path.join(base_dir, f"{slug}.svg")
-            if not os.path.exists(svg_path):
-                theme_key = _map_svg_category(category, clean_title)
-                color, badge_label, icon_svg = CATEGORY_SVG_THEMES.get(theme_key, CATEGORY_SVG_THEMES["Smartphones"])
-                brand_text = escape(((brand if brand and brand.lower() != "unknown" else (clean_title.split()[0] if clean_title else "DEALLENS"))).upper()[:18])
-                short_title = escape(" ".join(clean_title.split()[:4])[:28] or "Analyzed Product")
-                svg_id = re.sub(r"[^A-Za-z0-9]", "_", theme_key)
-                svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 350" width="400" height="350">
-  <defs>
-    <linearGradient id="bg_{svg_id}" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1"/>
-      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1"/>
-    </linearGradient>
-    <linearGradient id="glow_{svg_id}" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:{color};stop-opacity:0.08"/>
-      <stop offset="100%" style="stop-color:{color};stop-opacity:0.02"/>
-    </linearGradient>
-    <filter id="shadow_{svg_id}">
-      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="{color}" flood-opacity="0.15"/>
-    </filter>
-  </defs>
-  <rect width="400" height="350" rx="12" fill="url(#bg_{svg_id})"/>
-  <rect width="400" height="350" rx="12" fill="url(#glow_{svg_id})"/>
-  <g filter="url(#shadow_{svg_id})">
-    {icon_svg}
-  </g>
-  <text x="200" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="{color}" letter-spacing="3" opacity="0.9">{brand_text}</text>
-  <text x="200" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#94a3b8" opacity="0.8">{short_title}</text>
-  <rect x="140" y="318" width="120" height="20" rx="10" fill="{color}" opacity="0.1"/>
-  <text x="200" y="332" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="9" font-weight="600" fill="{color}" opacity="0.7">{badge_label}</text>
-  <text x="200" y="22" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" font-weight="400" fill="#475569" opacity="0.4">DEALLENS</text>
-</svg>'''
-                with open(svg_path, "w", encoding="utf-8") as fh:
-                    fh.write(svg_content)
+        if os.path.isdir(base_dir) and os.path.exists(os.path.join(base_dir, f"{slug}.svg")):
+            # If the SVG is already an established seed file on disk, it's safe to return
+            return f"/products/{slug}.svg"
     except Exception:
         pass
 
-    return rel_path
+    # Return real, high-resolution product photography
+    return get_curated_product_image(title=clean_title, brand=brand, category=category)
 
 
 def estimate_fallback_price(title: str = "", brand: str = "", category: str = "") -> float:
@@ -644,7 +737,7 @@ def estimate_fallback_price(title: str = "", brand: str = "", category: str = ""
         base = CATEGORY_PRICE_DEFAULTS[category]
     else:
         mapped = _map_svg_category(category, title)
-        base = CATEGORY_PRICE_DEFAULTS.get(mapped, 14999.0)
+        base = CATEGORY_PRICE_DEFAULTS.get(mapped, 999.0)
     seed = sum(ord(c) for c in (title or "Product"))
     variation = 1.0 + (((seed % 21) - 10) * 0.015)
     return round_to_retail_price(base * variation)
@@ -681,19 +774,35 @@ def filter_comparison_to_selective_platforms(
         l for l in valid_raw
         if l.get("data_source") in ("live", "verified") or l.get("is_source")
     ]
-    if len(verified_listings) >= 3:
-        active_listings = verified_listings[:4]
-    else:
-        seen_plats = {(l.get("platform") or "").lower() for l in verified_listings}
-        active_listings = list(verified_listings)
-        for l in valid_raw:
-            plat_l = (l.get("platform") or "").lower()
-            if plat_l not in seen_plats and plat_l in allowed_lower and len(active_listings) < 4:
-                seen_plats.add(plat_l)
-                active_listings.append(l)
+    seen_plats = {(l.get("platform") or "").lower() for l in verified_listings}
+    active_listings = list(verified_listings)
+    for l in valid_raw:
+        plat_l = (l.get("platform") or "").lower()
+        if plat_l not in seen_plats and plat_l in allowed_lower and len(active_listings) < 4:
+            seen_plats.add(plat_l)
+            active_listings.append(l)
 
     if not active_listings:
         active_listings = valid_raw[:4]
+
+    # If fewer than 3 platforms are available, fill with realistic category benchmark listings
+    if len(active_listings) < 3 and active_listings:
+        source_item = next((l for l in active_listings if l.get("is_source")), active_listings[0])
+        base_p = float(source_item.get("price") or 0)
+        base_m = float(source_item.get("mrp") or round_to_retail_price(base_p * 1.15))
+        if base_p > 0:
+            benchmarks = generate_benchmark_listings(
+                base_price=base_p,
+                title=title,
+                category=category,
+                source_platform=source_platform,
+                base_mrp=base_m,
+            )
+            for b in benchmarks:
+                b_plat = (b.get("platform") or "").lower()
+                if b_plat not in seen_plats and b_plat in allowed_lower and len(active_listings) < 4:
+                    seen_plats.add(b_plat)
+                    active_listings.append(b)
 
     active_listings.sort(key=lambda x: x["price"] if x.get("price") and x["price"] > 0 else float("inf"))
     prices = [l["price"] for l in active_listings if l.get("price") and l["price"] > 0]

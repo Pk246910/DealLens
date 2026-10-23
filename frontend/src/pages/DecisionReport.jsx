@@ -35,6 +35,7 @@ import PlatformBadge from "../components/PlatformBadge";
 import MarketplaceComparisonCards from "../components/MarketplaceComparisonCards";
 import { getProductImage, handleImageError } from "../utils/images";
 import { getPlatformColor, ALL_CHECKED_PLATFORMS } from "../utils/platforms";
+import { computeYDomain, formatPriceTick } from "../utils/chartUtils";
 
 const scoreColor = (s) =>
   s >= 80 ? "#10b981" : s >= 60 ? "#06b6d4" : s >= 40 ? "#f59e0b" : "#f43f5e";
@@ -50,6 +51,7 @@ const DecisionReport = () => {
   const [priceHistory, setPriceHistory] = useState(null);
   const [demo, setDemo] = useState(location.state?.demo || null);
   const [productOffers, setProductOffers] = useState([]);
+  const [hiddenPlatforms, setHiddenPlatforms] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -366,6 +368,28 @@ const DecisionReport = () => {
     availablePlatformNames.length === 0 ||
     availablePlatformNames.some((ap) => ap.toLowerCase() === p.toLowerCase())
   );
+  const activeRenderPlatforms = visibleHistoryPlatforms.filter(
+    (p) => !hiddenPlatforms.includes(p)
+  );
+
+  const yDomain = useMemo(() => {
+    if (!historyChartData || historyChartData.length === 0) return [0, "auto"];
+    const activeKeys = activeRenderPlatforms.length > 0 ? activeRenderPlatforms : visibleHistoryPlatforms;
+    const prices = historyChartData.flatMap((row) =>
+      activeKeys.map((p) => row[p]).filter((v) => typeof v === "number" && v > 0)
+    );
+    return computeYDomain(prices);
+  }, [historyChartData, activeRenderPlatforms, visibleHistoryPlatforms]);
+
+  const latestPriceByPlatform = useMemo(() => {
+    if (!historyChartData || historyChartData.length === 0) return {};
+    const lastRow = historyChartData[historyChartData.length - 1] || {};
+    const map = {};
+    visibleHistoryPlatforms.forEach((p) => {
+      if (lastRow[p]) map[p] = lastRow[p];
+    });
+    return map;
+  }, [historyChartData, visibleHistoryPlatforms]);
 
   const bestDeal = allDisplayListings[0] || null;
 
@@ -753,59 +777,220 @@ const DecisionReport = () => {
         {/* 4. Multi-Platform 30-Day Historical Trend Line */}
         {hasAnyHistory && visibleHistoryPlatforms.length > 0 && (
           <div className="card-panel">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: "0.45rem" }}>
-                <TrendingDown size={18} color="var(--accent-cyan)" /> 30-Day Multi-Platform Historical Price Movement
-              </h3>
-              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                {visibleHistoryPlatforms.map((p) => (
-                  <span
-                    key={p}
-                    style={{
-                      fontSize: "0.74rem",
-                      fontWeight: 700,
-                      color: getPlatformColor(p, "var(--accent-cyan)"),
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.25rem",
-                    }}
-                  >
-                    ● {p}
-                  </span>
-                ))}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1.1rem",
+                flexWrap: "wrap",
+                gap: "0.75rem",
+              }}
+            >
+              <div>
+                <h3
+                  style={{
+                    fontSize: "1.1rem",
+                    fontWeight: 800,
+                    margin: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.45rem",
+                  }}
+                >
+                  <TrendingDown size={18} color="var(--accent-cyan)" /> 30-Day Multi-Platform Historical Price Movement
+                </h3>
+                <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0.2rem 0 0" }}>
+                  Interactive price telemetry — click store badges to toggle visibility
+                </p>
+              </div>
+
+              {/* Single Interactive Legend / Filter Badges (Eliminates Duplicate Legend) */}
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
+                {visibleHistoryPlatforms.map((p) => {
+                  const off = hiddenPlatforms.includes(p);
+                  const color = getPlatformColor(p, "var(--accent-cyan)");
+                  const curPrice = latestPriceByPlatform[p];
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() =>
+                        setHiddenPlatforms((prev) =>
+                          prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+                        )
+                      }
+                      style={{
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        color: off ? "var(--text-muted)" : "var(--text-primary)",
+                        background: off ? "transparent" : `${color}18`,
+                        border: `1.5px solid ${color}${off ? "33" : "aa"}`,
+                        borderRadius: "999px",
+                        padding: "0.25rem 0.65rem",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        opacity: off ? 0.45 : 1,
+                        transition: "all 0.15s ease",
+                      }}
+                      title={off ? `Show ${p} on chart` : `Hide ${p} from chart`}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: color,
+                          display: "inline-block",
+                          opacity: off ? 0.4 : 1,
+                        }}
+                      />
+                      <span>{p}</span>
+                      {curPrice && !off && (
+                        <span
+                          style={{
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            fontFamily: "var(--font-mono)",
+                            opacity: 0.9,
+                          }}
+                        >
+                          ₹{Number(curPrice).toLocaleString("en-IN")}
+                        </span>
+                      )}
+                      <span style={{ fontSize: "0.68rem", opacity: 0.8 }}>{off ? "＋" : "✓"}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div style={{ width: "100%", height: 300 }}>
+            <div style={{ width: "100%", height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={historyChartData} margin={{ top: 10, right: 25, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
-                  <XAxis dataKey="date" tick={{ fill: "var(--text-secondary)", fontSize: 10 }} />
+                <LineChart data={historyChartData} margin={{ top: 12, right: 24, left: 10, bottom: 6 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" opacity={0.6} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="var(--text-secondary)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={{ stroke: "var(--border-color)" }}
+                    minTickGap={28}
+                    interval="preserveStartEnd"
+                  />
                   <YAxis
-                    tick={{ fill: "var(--text-secondary)", fontSize: 11, fontFamily: "var(--font-mono)" }}
-                    tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                    domain={yDomain}
+                    tickCount={6}
+                    width={64}
+                    stroke="var(--text-secondary)"
+                    fontSize={11}
+                    fontFamily="var(--font-mono)"
+                    tickLine={false}
+                    axisLine={{ stroke: "var(--border-color)" }}
+                    tickFormatter={(v) => formatPriceTick(v, yDomain[0], yDomain[1])}
                   />
                   <Tooltip
-                    contentStyle={{
-                      background: "var(--bg-secondary)",
-                      border: "1px solid var(--border-color)",
-                      borderRadius: "10px",
-                      fontSize: "0.85rem",
-                      color: "var(--text-primary)",
-                      boxShadow: "var(--shadow-card)",
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload || !payload.length) return null;
+                      const validItems = payload
+                        .filter((item) => item.value !== undefined && item.value !== null && Number(item.value) > 0)
+                        .sort((a, b) => Number(a.value) - Number(b.value));
+                      if (validItems.length === 0) return null;
+                      const lowestVal = validItems[0].value;
+                      return (
+                        <div
+                          style={{
+                            backgroundColor: "var(--bg-card, #1e293b)",
+                            border: "1px solid var(--border-color, #334155)",
+                            borderRadius: "10px",
+                            padding: "0.65rem 0.9rem",
+                            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.4)",
+                            fontSize: "0.8rem",
+                            minWidth: 190,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontWeight: 800,
+                              marginBottom: "0.4rem",
+                              color: "var(--text-primary, #f8fafc)",
+                              borderBottom: "1px solid var(--border-color, #334155)",
+                              paddingBottom: "0.3rem",
+                              fontSize: "0.82rem",
+                            }}
+                          >
+                            📅 {label}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                            {validItems.map((item) => {
+                              const isBest = item.value === lowestVal && validItems.length > 1;
+                              return (
+                                <div
+                                  key={item.dataKey}
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    gap: "0.75rem",
+                                  }}
+                                >
+                                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                    <span
+                                      style={{
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: "50%",
+                                        backgroundColor: item.color,
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                    <span style={{ color: "var(--text-secondary, #94a3b8)", fontWeight: 600 }}>
+                                      {item.name}
+                                    </span>
+                                    {isBest && (
+                                      <span
+                                        style={{
+                                          fontSize: "0.65rem",
+                                          fontWeight: 800,
+                                          backgroundColor: "rgba(34, 197, 94, 0.18)",
+                                          color: "#22c55e",
+                                          padding: "1px 5px",
+                                          borderRadius: 4,
+                                          lineHeight: 1.2,
+                                        }}
+                                      >
+                                        Lowest
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span
+                                    style={{
+                                      fontWeight: 800,
+                                      color: "var(--text-primary, #f8fafc)",
+                                      fontFamily: "var(--font-mono, monospace)",
+                                      letterSpacing: "-0.2px",
+                                    }}
+                                  >
+                                    ₹{Number(item.value).toLocaleString("en-IN")}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
                     }}
-                    labelStyle={{ color: "var(--text-primary)", fontWeight: 800, marginBottom: "0.3rem" }}
-                    formatter={(v, name) => [`₹${Number(v).toLocaleString("en-IN")}`, name]}
                   />
-                  <Legend />
-                  {visibleHistoryPlatforms.map((p) => (
+                  {activeRenderPlatforms.map((p) => (
                     <Line
                       key={p}
                       type="monotone"
                       dataKey={p}
                       stroke={getPlatformColor(p, "var(--accent-cyan)")}
                       strokeWidth={2.5}
-                      dot={{ r: 2 }}
+                      dot={{ r: 2.5 }}
                       activeDot={{ r: 5 }}
                       connectNulls
                     />

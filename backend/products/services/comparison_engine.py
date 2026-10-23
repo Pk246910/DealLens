@@ -67,13 +67,21 @@ def extract_key_attributes(title: str, specs: dict = None) -> dict:
 
     model_patterns = [
         r'(galaxy\s*s\d+(?:\s*ultra|\s*\+|\s*plus|\s*fe)?)',
-        r'(iphone\s*\d+(?:\s*(?:pro|pro\s*max|plus|mini))?)',
+        r'(iphone\s*\d+(?:\s*(?:pro\s*max|pro|plus|mini))?)',
         r'(ipad\s*(?:air|pro|mini)?(?:\s*(?:m\d+|\d+)))',
         r'(macbook\s*(?:air|pro)(?:\s*(?:m\d+|\d+))?)',
         r'(wh-\d+\w*)',
         r'(airdopes?\s*\d+)',
         r'(galaxy\s*tab\s*\w+)',
         r'(oneplus\s*\d+(?:\s*(?:pro|t|\+))?)',
+        r'(airpods(?:\s*pro)?(?:\s*(?:max|\d+(?:nd|rd|th)?\s*gen))?)',
+        r'(apple\s*watch(?:\s*(?:ultra\s*\d*|series\s*\d+|se))?)',
+        r'(galaxy\s*watch\s*\d+(?:\s*(?:classic|pro|ultra))?)',
+        r'(pixel\s*\d+(?:\s*(?:pro|a))?)',
+        r'(redmi\s*note\s*\d+\w*)',
+        r'(realme\s*\d+\w*)',
+        r'(poco\s*\w+\d+\w*)',
+        r'(nord\s*(?:ce)?\s*\d+\w*)',
     ]
     for pattern in model_patterns:
         m = re.search(pattern, title_lower)
@@ -103,77 +111,92 @@ def extract_key_attributes(title: str, specs: dict = None) -> dict:
 
 
 def compute_match_score(attrs1: dict, attrs2: dict) -> float:
-    """Compute match score between two products based on attributes. Returns 0-100."""
+    """Compute match score between two products based on positive attributes. Returns 0-100."""
     score = 0
     total_weight = 0
 
-    if "model_key" in attrs1 and "model_key" in attrs2:
-        total_weight += 35
-        model_sim = similarity(attrs1["model_key"], attrs2["model_key"])
-        if model_sim >= 0.8:
-            score += 35
-        elif model_sim >= 0.6:
-            score += 25
-        elif model_sim >= 0.4:
-            score += 15
-    elif "model_key" not in attrs1 and "model_key" not in attrs2:
-        total_weight += 35
-        score += 15
+    has_m1 = "model_key" in attrs1
+    has_m2 = "model_key" in attrs2
+    if has_m1 and has_m2:
+        total_weight += 40
+        m1 = attrs1["model_key"].lower()
+        m2 = attrs2["model_key"].lower()
+        if m1 == m2:
+            score += 40
+        else:
+            model_sim = similarity(m1, m2)
+            if model_sim >= 0.85:
+                score += 35
+            elif model_sim >= 0.65:
+                score += 20
+            else:
+                return 0.0  # Incompatible distinct models (e.g. iPhone 15 vs 16 or Galaxy S23 vs S24)
+    elif has_m1 != has_m2:
+        total_weight += 40
+        score += 0
 
-    if "storage" in attrs1 and "storage" in attrs2:
+    has_s1 = "storage" in attrs1
+    has_s2 = "storage" in attrs2
+    if has_s1 and has_s2:
         total_weight += 25
         if attrs1["storage"].lower() == attrs2["storage"].lower():
             score += 25
         else:
             score += 0
-    elif "storage" not in attrs1 and "storage" not in attrs2:
-        total_weight += 25
-        score += 15
+    elif has_s1 != has_s2:
+        total_weight += 20
+        score += 0
 
-    if "ram" in attrs1 and "ram" in attrs2:
+    has_r1 = "ram" in attrs1
+    has_r2 = "ram" in attrs2
+    if has_r1 and has_r2:
         total_weight += 15
-        if attrs1["ram"] == attrs2["ram"]:
+        if attrs1["ram"].lower() == attrs2["ram"].lower():
             score += 15
-    elif "ram" not in attrs1 and "ram" not in attrs2:
-        total_weight += 15
-        score += 10
+        else:
+            score += 0
+    elif has_r1 != has_r2:
+        total_weight += 10
+        score += 0
 
-    if "color" in attrs1 and "color" in attrs2:
-        total_weight += 15
+    has_c1 = "color" in attrs1
+    has_c2 = "color" in attrs2
+    if has_c1 and has_c2:
+        total_weight += 10
         color_sim = similarity(attrs1["color"], attrs2["color"])
-        score += int(15 * color_sim)
-    elif "color" not in attrs1 and "color" not in attrs2:
-        total_weight += 15
-        score += 10
+        score += int(10 * color_sim)
 
-    if "screen_size" in attrs1 and "screen_size" in attrs2:
+    has_ss1 = "screen_size" in attrs1
+    has_ss2 = "screen_size" in attrs2
+    if has_ss1 and has_ss2:
         total_weight += 10
         try:
             if abs(float(attrs1["screen_size"]) - float(attrs2["screen_size"])) < 0.2:
                 score += 10
         except (ValueError, TypeError):
             pass
-    elif "screen_size" not in attrs1 and "screen_size" not in attrs2:
+    elif has_ss1 != has_ss2:
         total_weight += 10
-        score += 5
+        score += 0
 
     if total_weight == 0:
-        return 0
+        return 0.0
 
     return round((score / total_weight) * 100, 1)
 
 
-def _title_word_overlap(title_a: str, title_b: str) -> float:
+def _title_word_overlap(title_a: str, title_b: str, brand: str = "") -> float:
     """Compute the fraction of significant words from title_a that appear in title_b."""
     stopwords = {
         "for", "with", "the", "and", "new", "original", "genuine", "combo",
         "pack", "set", "inch", "cm", "mm", "in", "of", "a", "an", "is",
         "buy", "online", "price", "india", "black", "white", "blue",
         # Generic tier/radio tokens carry no product identity on their own
-        # ("Pro" alone must not link an iPhone to AirPods).
         "pro", "max", "plus", "ultra", "mini", "fe", "neo",
-        "5g", "4g", "lte", "wifi", "bluetooth",
+        "5g", "4g", "lte", "wifi", "bluetooth", "edition", "series",
     }
+    if brand:
+        stopwords.add(brand.lower().strip())
     words_a = {
         w for w in normalize_text(title_a).split()
         if len(w) > 2 and w not in stopwords
@@ -248,38 +271,66 @@ class ComparisonEngine:
             q |= Q(brand__iexact=brand)
         q |= Q(title__icontains=brand[:20] if brand else title[:20])
 
+        source_category = (normalized_product.get("category") or "").strip().lower()
+
         candidates = Product.objects.filter(q).prefetch_related("offers").distinct()[:100]
 
         matching_products = []
         for product in candidates:
+            cand_category = (product.category or "").strip().lower()
+            if source_category and cand_category and source_category not in ("other", "") and cand_category not in ("other", ""):
+                is_phone_src = any(k in source_category for k in ("phone", "mobile"))
+                is_phone_cand = any(k in cand_category for k in ("phone", "mobile"))
+                is_audio_src = any(k in source_category for k in ("headphone", "earbud", "audio", "speaker"))
+                is_audio_cand = any(k in cand_category for k in ("headphone", "earbud", "audio", "speaker"))
+                is_laptop_src = any(k in source_category for k in ("laptop", "notebook", "computer"))
+                is_laptop_cand = any(k in cand_category for k in ("laptop", "notebook", "computer"))
+                is_watch_src = any(k in source_category for k in ("watch", "wearable"))
+                is_watch_cand = any(k in cand_category for k in ("watch", "wearable"))
+
+                if (is_phone_src and not is_phone_cand) or (is_phone_cand and not is_phone_src):
+                    continue
+                if (is_audio_src and not is_audio_cand) or (is_audio_cand and not is_audio_src):
+                    continue
+                if (is_laptop_src and not is_laptop_cand) or (is_laptop_cand and not is_laptop_src):
+                    continue
+                if (is_watch_src and not is_watch_cand) or (is_watch_cand and not is_watch_src):
+                    continue
+
             product_attrs = extract_key_attributes(product.title, product.specifications)
-            # Variant separation: when both sides state storage and it differs
-            # (e.g. 256GB vs 128GB), they are different variants — never match.
+
+            # Strict model key check: e.g. iphone 15 vs iphone 16 or airpods must NEVER match
+            if source_attrs.get("model_key") and product_attrs.get("model_key"):
+                if source_attrs["model_key"].lower() != product_attrs["model_key"].lower():
+                    continue
+            elif source_attrs.get("model_key") and not product_attrs.get("model_key"):
+                continue
+
+            # Variant separation: when both sides state storage and it differs, never match
             if (
                 source_attrs.get("storage")
                 and product_attrs.get("storage")
                 and source_attrs["storage"].lower() != product_attrs["storage"].lower()
             ):
                 continue
-            # Same for appliance capacity (e.g. 253L vs 183L refrigerators).
             if (
                 source_attrs.get("capacity_l")
                 and product_attrs.get("capacity_l")
                 and source_attrs["capacity_l"] != product_attrs["capacity_l"]
             ):
                 continue
-            # Fix 1 gate: a non-identical candidate needs positive evidence —
-            # model_key similarity >= 0.6 OR title word overlap >= 0.3.
-            # Missing attributes are never evidence, so denominator shrinkage
-            # alone can no longer pass a candidate.
-            word_overlap = _title_word_overlap(title, product.title)
-            if normalize_text(title) != normalize_text(product.title):
-                model_sim = 0.0
-                if source_attrs.get("model_key") and product_attrs.get("model_key"):
-                    model_sim = similarity(
-                        source_attrs["model_key"], product_attrs["model_key"])
-                if model_sim < 0.6 and word_overlap < 0.3:
-                    continue
+
+            word_overlap = _title_word_overlap(title, product.title, brand=brand)
+            if normalize_text(title) == normalize_text(product.title):
+                matching_products.append((product, 100.0))
+                continue
+
+            model_sim = 0.0
+            if source_attrs.get("model_key") and product_attrs.get("model_key"):
+                model_sim = similarity(
+                    source_attrs["model_key"], product_attrs["model_key"])
+            if model_sim < 0.6 and word_overlap < 0.35:
+                continue
             score = compute_match_score(source_attrs, product_attrs)
 
             if score >= self.MATCH_THRESHOLD:
@@ -300,14 +351,26 @@ class ComparisonEngine:
         )
         listings.append(source_listing)
 
-        for product, match_score in matching_products:
-            for offer in product.offers.filter(in_stock=True).order_by("current_price"):
+        # Collect offers strictly prioritizing the primary matched product
+        if matching_products:
+            best_match_product, best_score = matching_products[0]
+            for offer in best_match_product.offers.filter(in_stock=True).order_by("current_price"):
                 if offer.store_name == source_platform:
                     continue
-                if offer.id in seen_offer_ids:
-                    continue
                 seen_offer_ids.add(offer.id)
-                listings.append(self._build_db_listing(offer, match_score))
+                listings.append(self._build_db_listing(offer, best_score))
+
+            # Secondary products with matching model_key can contribute missing stores
+            for product, match_score in matching_products[1:]:
+                prod_m = extract_key_attributes(product.title).get("model_key")
+                src_m = source_attrs.get("model_key")
+                if src_m and prod_m and src_m.lower() != prod_m.lower():
+                    continue
+                for offer in product.offers.filter(in_stock=True).order_by("current_price"):
+                    if offer.store_name == source_platform or offer.id in seen_offer_ids:
+                        continue
+                    seen_offer_ids.add(offer.id)
+                    listings.append(self._build_db_listing(offer, match_score))
 
         listings = self._deduplicate_platforms(listings)
         listings = self._compute_flags(listings)
@@ -323,13 +386,20 @@ class ComparisonEngine:
                 continue
             is_source = listing.get("is_source", False)
             price = listing.get("price", 0) or float("inf")
+            conf = listing.get("match_confidence", 0)
 
             if platform not in best_per_platform:
                 best_per_platform[platform] = listing
             elif is_source:
                 best_per_platform[platform] = listing
-            elif price < (best_per_platform[platform].get("price", 0) or float("inf")):
-                best_per_platform[platform] = listing
+            else:
+                existing = best_per_platform[platform]
+                exist_conf = existing.get("match_confidence", 0)
+                # Never replace high-confidence match with lower confidence
+                if exist_conf - conf > 15:
+                    continue
+                if price < (existing.get("price", 0) or float("inf")):
+                    best_per_platform[platform] = listing
 
         result = list(best_per_platform.values())
         result.sort(key=lambda x: (not x.get("is_source", False), x.get("price", 0) or float("inf")))

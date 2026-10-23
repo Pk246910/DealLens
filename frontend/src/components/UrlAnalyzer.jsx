@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { ClipboardPaste, X, Sparkles, Link2, AlertCircle } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { ClipboardPaste, X, Sparkles, Link2, AlertCircle, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 import API from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 import { getPlatformColor } from "../utils/platforms";
 
 export const PLATFORMS = [
@@ -30,7 +32,11 @@ const ANALYSIS_STEPS = [
 ];
 
 const UrlAnalyzer = ({ onResult, onLoading }) => {
-  const [url, setUrl] = useState("");
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [url, setUrl] = useState(() => location.state?.pendingUrl || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [step, setStep] = useState("");
@@ -64,6 +70,18 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
       return;
     }
 
+    if (!user) {
+      toast.error("Please log in or register to analyze product links.", { id: "auth-required" });
+      setError("Please log in or register to analyze product links.");
+      navigate("/login", {
+        state: {
+          from: location.pathname + location.search,
+          pendingUrl: targetUrl,
+        },
+      });
+      return;
+    }
+
     setLoading(true);
     setError(null);
     onLoading?.(true);
@@ -84,7 +102,16 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
       onResult?.(res.data);
     } catch (err) {
       const data = err.response?.data;
-      if (data?.supported_platforms) {
+      if (err.response?.status === 401 || data?.auth_required) {
+        toast.error("Please log in or register to analyze product links.", { id: "auth-required" });
+        setError("Please log in or register to analyze product links.");
+        navigate("/login", {
+          state: {
+            from: location.pathname + location.search,
+            pendingUrl: targetUrl,
+          },
+        });
+      } else if (data?.supported_platforms) {
         setError(`Platform not supported. Supported: ${data.supported_platforms.join(", ")}`);
       } else {
         setError(data?.error || "Analysis failed. Please try another product URL.");
@@ -284,6 +311,71 @@ const UrlAnalyzer = ({ onResult, onLoading }) => {
           )}
         </button>
       </div>
+
+      {/* Sign in / Register Notice if Not Logged In */}
+      {!user && (
+        <div
+          style={{
+            marginTop: "0.85rem",
+            padding: "0.65rem 0.95rem",
+            background: "rgba(6, 182, 212, 0.08)",
+            border: "1px solid rgba(6, 182, 212, 0.22)",
+            borderRadius: "10px",
+            fontSize: "0.83rem",
+            color: "var(--text-secondary)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+            animation: "fadeIn 0.2s ease",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+            <Lock size={15} style={{ color: "var(--accent-cyan)", flexShrink: 0 }} />
+            <span>
+              Authentication required: Please <strong>sign in</strong> or <strong>create an account</strong> to analyze live product links.
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <Link
+              to="/login"
+              state={{ from: location.pathname + location.search, pendingUrl: url }}
+              style={{
+                color: "var(--accent-cyan)",
+                fontWeight: 700,
+                textDecoration: "none",
+                fontSize: "0.82rem",
+                padding: "0.25rem 0.65rem",
+                borderRadius: "6px",
+                background: "rgba(6, 182, 212, 0.14)",
+                border: "1px solid rgba(6, 182, 212, 0.3)",
+                transition: "all 0.15s ease",
+              }}
+            >
+              Sign In
+            </Link>
+            <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>or</span>
+            <Link
+              to="/register"
+              state={{ from: location.pathname + location.search, pendingUrl: url }}
+              style={{
+                color: "var(--text-primary)",
+                fontWeight: 600,
+                textDecoration: "none",
+                fontSize: "0.82rem",
+                padding: "0.25rem 0.65rem",
+                borderRadius: "6px",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+                transition: "all 0.15s ease",
+              }}
+            >
+              Register
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Progress Telemetry Bar (During Live Scraping) */}
       {loading && step && (

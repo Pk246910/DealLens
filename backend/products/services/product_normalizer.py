@@ -1,34 +1,48 @@
 import re
 
 CATEGORY_KEYWORDS = {
-    "Smartphones": ["phone", "iphone", "galaxy", "pixel", "oneplus", "xiaomi", "redmi", "realme", "vivo", "oppo", "samsung"],
+    "Fashion": [
+        "shirt", "t-shirt", "tshirt", "tee", "jeans", "dress", "jacket", "trousers",
+        "kurta", "kurti", "saree", "sari", "lehenga", "polo", "hoodie", "sweatshirt",
+        "top", "chinos", "blazer", "suit", "shorts", "skirt", "trackpant", "boxer",
+        "innerwear", "ethnic", "apparel", "clothing", "menswear", "womenswear", "kidswear",
+    ],
+    "Footwear": [
+        "shoe", "sneaker", "boot", "sandal", "slipper", "floaters", "crocs", "loafers",
+        "heels", "flats", "clogs", "footwear",
+    ],
+    "Beauty": [
+        "makeup", "skincare", "moisturizer", "serum", "foundation", "lipstick", "perfume",
+        "fragrance", "sunscreen", "facewash", "face wash", "lotion", "cream", "shampoo",
+        "conditioner", "kajal", "eyeliner", "mascara", "cosmetics", "beauty",
+    ],
+    "Smartphones": ["phone", "iphone", "galaxy", "pixel", "oneplus", "xiaomi", "redmi", "realme", "vivo", "oppo", "samsung", "smartphone"],
     "Laptops": ["laptop", "macbook", "notebook", "chromebook", "thinkpad"],
     "Tablets": ["tablet", "ipad", "galaxy tab"],
     "Headphones": ["headphone", "headset", "over-ear"],
-    "Earbuds": ["earbuds", "airpods", "tws", "earphone"],
-    "Smartwatches": ["smartwatch", "smart watch", "apple watch", "watch ultra"],
+    "Earbuds": ["earbuds", "airpods", "tws", "earphone", "airdopes"],
+    "Smartwatches": ["smartwatch", "smart watch", "apple watch", "watch ultra", "galaxy watch"],
     "TVs": ["television", "tv ", " smart tv", " led tv", " oled tv"],
     "Cameras": ["camera", "dslr", "mirrorless", "gopro", "lens"],
     "Gaming": ["gaming", "playstation", "xbox", "nintendo", "ps5"],
     "Computer Accessories": ["keyboard", "mouse", "ssd", "hard drive", "usb", "monitor", "webcam", "printer"],
-    "Home Appliances": ["ac ", "air conditioner", "washing machine", "refrigerator", "vacuum", "fan ", "heater"],
-    "Kitchen Appliances": ["mixer", "grinder", "blender", "toaster", "microwave", "cooker", "pressure cooker"],
-    "Fashion": ["shirt", "jeans", "dress", "jacket", "trousers", "t-shirt", "kurta", "saree", "lehenga"],
-    "Footwear": ["shoe", "sneaker", "boot", "sandal", "slipper", "floaters"],
-    "Beauty": ["makeup", "skincare", "moisturizer", "serum", "foundation", "lipstick", "perfume", "fragrance"],
+    "Home Appliances": ["ac ", "air conditioner", "washing machine", "refrigerator", "vacuum", "fan ", "heater", "geyser"],
+    "Kitchen Appliances": ["mixer", "grinder", "blender", "toaster", "microwave", "cooker", "pressure cooker", "air fryer", "kettle", "water purifier"],
     "Grocery": ["atta", "rice", "oil", "snack", "tea", "coffee", "masala", "pulse", "cereal"],
 }
 
 BRAND_PATTERNS = [
-    "Samsung", "Apple", "OnePlus", "Xiaomi", "Realme", "Vivo", "Oppo", "Nothing",
+    "Samsung", "Apple", "OnePlus", "Xiaomi", "Realme", "Vivo", "Oppo", "Nothing", "Motorola", "Google",
     "Sony", "LG", "HP", "Dell", "Lenovo", "ASUS", "Acer", "MSI",
     "Boat", "JBL", "Sennheiser", "Bose", "Noise", "Fire-Boltt", "Amazfit",
-    "Nike", "Adidas", "Puma", "Reebok", "Levi", "H&M", "Zara",
-    "Philips", "Havells", "Bajaj", "Prestige", "Pigeon",
-    "Lakme", "Maybelline", "L'Oreal",
+    "Roadster", "Highlander", "HRX", "WROGN", "Mast & Harbour", "Flying Machine",
+    "Allen Solly", "Peter England", "Louis Philippe", "Van Heusen", "Raymond", "Mufti", "U.S. Polo",
+    "Nike", "Adidas", "Puma", "Reebok", "Levi's", "Levis", "H&M", "Zara", "Biba", "FabIndia",
+    "Philips", "Havells", "Bajaj", "Prestige", "Pigeon", "Kent", "Aquaguard",
+    "Lakme", "Maybelline", "L'Oreal", "Mamaearth", "Nivea", "Plum", "Nykaa",
     "Corsair", "Logitech", "Razer", "Keychron",
     "GoPro", "Nikon", "Canon", "Fujifilm",
-    "Dyson", "IFB", "Whirlpool",
+    "Dyson", "IFB", "Whirlpool", "Voltas", "Godrej",
 ]
 
 
@@ -50,7 +64,9 @@ class ProductNormalizer:
         if mrp > 0 and price > 0 and mrp > price:
             discount = round(((mrp - price) / mrp) * 100, 2)
 
-        category = raw_data.get("category", "") or self._infer_category(title)
+        category = raw_data.get("category", "")
+        if not category or category == "Other":
+            category = self._infer_category(title, raw_data.get("source_url") or raw_data.get("url") or "")
 
         rating = raw_data.get("rating")
         if rating:
@@ -102,11 +118,11 @@ class ProductNormalizer:
                 return first
         return ""
 
-    def _infer_category(self, title: str) -> str:
-        title_lower = title.lower()
+    def _infer_category(self, title: str, url: str = "") -> str:
+        haystack = f"{title or ''} {url or ''}".lower()
         for category, keywords in CATEGORY_KEYWORDS.items():
             for kw in keywords:
-                if kw in title_lower:
+                if kw in haystack:
                     return category
         return "Other"
 
