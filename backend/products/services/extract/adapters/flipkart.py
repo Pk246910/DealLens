@@ -28,8 +28,12 @@ _CONFIG = {
             "span.G6XhRU",
         ],
         "price": [
+            ".Nx9bqj",
             "div.Nx9bqj",
+            "span.Nx9bqj",
+            "._30jeq3",
             "div._30jeq3",
+            "span._30jeq3",
             "div._25b18c",
             "div.Nx9bqj._4b5DiR",
             "div._30jeq3._16Jk6d",
@@ -91,11 +95,9 @@ _CONFIG = {
 }
 
 
-def _parse_rating(text: str) -> float:
-    m = re.search(r"([\d.]+)", text)
-    if not m:
-        raise ValueError("no rating")
-    return float(m.group(1))
+def _parse_rating(text: str) -> float | None:
+    from ..validator import clean_rating
+    return clean_rating(text)
 
 
 class FlipkartExtractor(BaseProductExtractor):

@@ -7,14 +7,14 @@ from ._common import run_standard
 
 _CONFIG = {
     "selectors": {
-        "title": ["h1.ProductName", "h1"],
-        "price": ["span.ProductPrice", "span.amount"],
-        "mrp": ["span.mrp"],
-        "rating": ["span.rating"],
-        "image": ["img.product-hero-img"],
+        "title": ["h1.ProductName", "h1.product-title", "h1"],
+        "price": ["span.ProductPrice", "span.ProductDescription__price", "span.amount"],
+        "mrp": ["span.mrp", "span.ProductDescription__mrp"],
+        "rating": ["span.rating", "div.ProductDetails__rating"],
+        "image": ["img.product-hero-img", "img.ProductImage__image"],
     },
-    "id_patterns": [r"[?&]pid=(\d+)", r"/(\d{5,})(?:\?|/|$)"],
-    "wait_selector": "h1.ProductName",
+    "id_patterns": [r"[?&]pid=(\d+)", r"/p-mp(\d+)", r"/(\d{5,})(?:\?|/|$)"],
+    "wait_selector": "h1.ProductName, span.ProductPrice",
 }
 
 

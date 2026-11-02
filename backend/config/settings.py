@@ -122,7 +122,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # SQLite fallback for local dev / CI so `manage.py check` never crashes.
 # -------------------------------------------------------------------
 
-if os.getenv("DB_NAME") and os.getenv("DB_USER"):
+import sys
+
+is_testing = "test" in sys.argv
+use_postgres = (
+    bool(os.getenv("DB_NAME"))
+    and bool(os.getenv("DB_USER"))
+    and not is_testing
+    and not os.getenv("USE_SQLITE", "").lower() in ("1", "true", "yes")
+)
+
+if use_postgres:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",

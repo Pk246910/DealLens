@@ -85,6 +85,9 @@ class URLAnalyzer:
         if not url.startswith(("http://", "https://")):
             url = "https://" + url
 
+        if "\x00" in url or "\r" in url or "\n" in url:
+            return {"valid": False, "error": "URL contains invalid characters"}
+
         try:
             parsed = urlparse(url)
             if not parsed.scheme or not parsed.netloc:
@@ -97,6 +100,14 @@ class URLAnalyzer:
         domain = parsed.netloc.lower().split(":")[0]
         if domain.startswith("www."):
             domain = domain[4:]
+
+        if domain in ("localhost", "127.0.0.1", "::1") or domain.endswith(".localhost") or domain.endswith(".local") or domain.endswith(".internal"):
+            return {"valid": False, "error": "Access to localhost or internal network destinations is not allowed"}
+
+        from .security import is_ip_private_or_reserved
+        if is_ip_private_or_reserved(domain):
+            return {"valid": False, "error": "Access to private or reserved IP addresses is not allowed"}
+
         return {"valid": True, "url": url, "domain": domain}
 
     @staticmethod

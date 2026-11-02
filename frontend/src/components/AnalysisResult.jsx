@@ -239,16 +239,44 @@ const AnalysisResult = ({ data, analysisId }) => {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
             <PlatformBadge platform={data.platform} size="md" />
 
-            {product.data_source === "live" && (
-              <span className="badge badge-green">● Live Scraped</span>
+            {(data.extraction_status === "live" || product.data_source === "live") && (
+              <span className="badge badge-green">● Live Verified</span>
             )}
-            {product.data_source === "url_extract" && (
-              <span className="badge badge-cyan">● Verified Product</span>
+            {data.extraction_status === "partial" && (
+              <span className="badge badge-amber">● Partial Extraction</span>
+            )}
+            {(data.extraction_status === "cached" || data.extraction_status === "database" || product.data_source === "dataset") && (
+              <span className="badge badge-cyan">
+                ● Stored Catalog Data {data.extraction_updated ? `(${new Date(data.extraction_updated).toLocaleDateString("en-IN")})` : ""}
+              </span>
             )}
             {product.data_source === "demo" && (
-              <span className="badge badge-cyan">● Verified Catalog</span>
+              <span className="badge badge-purple">● Reference Comparison</span>
+            )}
+            {product.data_source === "inferred" && (
+              <span className="badge badge-amber">● Inferred Metadata</span>
             )}
           </div>
+
+          {(data.extraction_notice || product.extraction_notice) && (
+            <div
+              style={{
+                margin: "0.5rem 0 0.75rem 0",
+                padding: "0.5rem 0.75rem",
+                borderRadius: "8px",
+                background: "rgba(245, 158, 11, 0.1)",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                color: "var(--accent-amber)",
+                fontSize: "0.82rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.45rem",
+              }}
+            >
+              <span>ℹ️</span>
+              <span>{data.extraction_notice || product.extraction_notice}</span>
+            </div>
+          )}
 
           <h1
             style={{
@@ -279,22 +307,20 @@ const AnalysisResult = ({ data, analysisId }) => {
           <div style={{ display: "flex", gap: "1.5rem", alignItems: "baseline", flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>
-                Current Best Price
+                Current Selling Price
               </div>
               <div
                 style={{
                   fontSize: "2.1rem",
                   fontWeight: 800,
                   fontFamily: "var(--font-mono)",
-                  color: product.price > 0 || bestDeal?.price > 0 ? "var(--accent-green)" : "var(--text-muted)",
+                  color: product.price > 0 ? "var(--accent-green)" : "var(--text-muted)",
                   letterSpacing: "-0.03em",
                 }}
               >
                 {product.price > 0
                   ? `₹${product.price?.toLocaleString("en-IN")}`
-                  : bestDeal?.price > 0
-                  ? `₹${bestDeal.price.toLocaleString("en-IN")}`
-                  : "N/A"}
+                  : "Price Unavailable"}
               </div>
             </div>
 
@@ -316,18 +342,18 @@ const AnalysisResult = ({ data, analysisId }) => {
               </div>
             )}
 
-            {product.discount > 0 && (
+            {product.discount > 0 && product.price > 0 && (
               <span className="badge badge-rose" style={{ fontSize: "0.85rem", padding: "0.35rem 0.65rem" }}>
                 <TrendingDown size={14} /> {product.discount}% OFF
               </span>
             )}
 
-            {product.rating && (
+            {product.rating !== null && product.rating !== undefined && Number(product.rating) > 0 && (
               <div style={{ fontSize: "0.92rem", color: "var(--accent-amber)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
-                <span>★ {product.rating}</span>
-                {product.review_count > 0 && (
+                <span>★ {Number(product.rating).toFixed(1)}</span>
+                {product.review_count !== null && product.review_count !== undefined && Number(product.review_count) > 0 && (
                   <span style={{ color: "var(--text-muted)", fontSize: "0.8rem", fontWeight: 500 }}>
-                    ({product.review_count.toLocaleString("en-IN")} reviews)
+                    ({Number(product.review_count).toLocaleString("en-IN")} reviews)
                   </span>
                 )}
               </div>

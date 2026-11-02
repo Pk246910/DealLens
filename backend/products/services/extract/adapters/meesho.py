@@ -7,13 +7,13 @@ from ._common import run_standard
 
 _CONFIG = {
     "selectors": {
-        "title": ["h1", "div[class*='ProductName']"],
-        "price": ["span[class*='Price']", "div[class*='Price']"],
+        "title": ["h1", "div[class*='ProductName']", "span[class*='StyledText']"],
+        "price": ["span[class*='Price']", "div[class*='Price']", "h4[class*='Heading']"],
         "rating": ["span[class*='Rating']"],
-        "image": ["img[class*='Product']"],
+        "image": ["img[class*='Product']", "img[src*='images.meesho.com']"],
     },
-    "id_patterns": [r"/(\d{5,})(?:\?|/|$)"],
-    "wait_selector": "h1",
+    "id_patterns": [r"/p/([a-zA-Z0-9]+)", r"/(\d{5,})(?:\?|/|$)"],
+    "wait_selector": "h1, span[class*='Price']",
 }
 
 

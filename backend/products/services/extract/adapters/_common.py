@@ -25,22 +25,14 @@ from ..browser import available as browser_available
 from ..browser import render as browser_render
 from ..http import fetch
 from ..structured import extract_embedded_state, extract_json_ld, extract_meta
+from ..validator import clean_price_string, clean_rating, clean_review_count, validate_image_url
 from products.services.product_extractor import ExtractionError
 
 logger = logging.getLogger(__name__)
 
 
 def _parse_price(text) -> float | None:
-    if text is None:
-        return None
-    if isinstance(text, (int, float)):
-        return float(text) if float(text) > 0 else None
-    cleaned = re.sub(r"[^\d.]", "", str(text))
-    try:
-        value = float(cleaned)
-        return value if value > 0 else None
-    except (TypeError, ValueError):
-        return None
+    return clean_price_string(text)
 
 
 def _first_text(soup, selectors: list) -> str | None:
@@ -134,8 +126,10 @@ def _apply_selectors(result: ExtractedProduct, soup, cfg: dict) -> bool:
     if rating_raw and result.rating is None:
         parser = cfg.get("parse_rating")
         try:
-            result.rating = parser(rating_raw) if parser else float(rating_raw)
-            touched = True
+            val = parser(rating_raw) if parser else clean_rating(rating_raw)
+            if val is not None:
+                result.rating = val
+                touched = True
         except (TypeError, ValueError):
             pass
 
@@ -143,12 +137,10 @@ def _apply_selectors(result: ExtractedProduct, soup, cfg: dict) -> bool:
     if reviews_raw and result.review_count is None:
         parser = cfg.get("parse_reviews")
         try:
-            if parser:
-                result.review_count = parser(reviews_raw)
-            else:
-                m = re.search(r"([\d,]+)", reviews_raw)
-                result.review_count = int(m.group(1).replace(",", "")) if m else None
-            touched = True
+            val = parser(reviews_raw) if parser else clean_review_count(reviews_raw)
+            if val is not None:
+                result.review_count = val
+                touched = True
         except (TypeError, ValueError):
             pass
 
@@ -196,7 +188,12 @@ def run_standard(*, platform: str, url: str, cfg: dict) -> ExtractedProduct:
 
     result.product_id = _extract_id(url, cfg.get("id_patterns", []))
 
-    if not result.product_name and browser_available():
+    # Fall back to rendered browser if product name or price is missing,
+    # provided automated access wasn't explicitly blocked by anti-bot barriers
+    needs_browser = (not result.product_name or result.price is None)
+    is_blocked_error = any(w in (result.reason or "").lower() for w in ("403", "429", "captcha", "robot", "access denied", "blocked"))
+
+    if needs_browser and browser_available() and not is_blocked_error:
         rendered = browser_render(url, wait_selector=cfg.get("wait_selector"))
         if rendered.get("blocked"):
             if not result.reason:

@@ -37,27 +37,12 @@ def _is_private_ip(ip: str) -> bool:
 
 
 def _validate_url_safety(url: str) -> str:
-    from urllib.parse import urlparse
-    import socket
-    if len(url) > MAX_URL_LENGTH:
-        raise ValueError(f"URL exceeds maximum length of {MAX_URL_LENGTH} characters")
-
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError("Only HTTP and HTTPS URLs are supported")
-
-    if "\x00" in url:
-        raise ValueError("URL contains invalid characters")
-
+    from .security import validate_url_security, SecurityValidationError
     try:
-        ip = socket.gethostbyname(parsed.hostname)
-    except (socket.gaierror, TypeError):
-        raise ValueError("Could not resolve hostname")
-
-    if _is_private_ip(ip):
-        raise ValueError("URL resolves to a private/internal network address")
-
-    return ip
+        sec = validate_url_security(url, check_allowed_domain=False)
+        return sec["resolved_ip"]
+    except SecurityValidationError as e:
+        raise ValueError(str(e))
 
 
 class ExtractionError(Exception):

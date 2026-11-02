@@ -55,13 +55,20 @@ class ProductNormalizer:
         if not brand:
             brand = self._extract_brand_from_title(title)
 
-        price = self._to_float(raw_data.get("price"))
-        mrp = self._to_float(raw_data.get("mrp"))
-        if not mrp or mrp < price:
+        raw_price = raw_data.get("price")
+        price = self._to_float(raw_price) if raw_price is not None else None
+        if price is not None and price <= 0:
+            price = None
+
+        raw_mrp = raw_data.get("mrp")
+        mrp = self._to_float(raw_mrp) if raw_mrp is not None else None
+        if mrp is not None and mrp <= 0:
+            mrp = None
+        if mrp is not None and price is not None and mrp < price:
             mrp = price
 
         discount = 0.0
-        if mrp > 0 and price > 0 and mrp > price:
+        if mrp is not None and price is not None and mrp > price:
             discount = round(((mrp - price) / mrp) * 100, 2)
 
         category = raw_data.get("category", "")
@@ -69,21 +76,23 @@ class ProductNormalizer:
             category = self._infer_category(title, raw_data.get("source_url") or raw_data.get("url") or "")
 
         rating = raw_data.get("rating")
-        if rating:
+        if rating is not None:
             try:
                 rating = float(rating)
-                rating = max(0.0, min(5.0, rating))
+                rating = round(max(0.0, min(5.0, rating)), 2)
             except (ValueError, TypeError):
                 rating = None
 
         review_count = raw_data.get("review_count")
-        if review_count:
+        if review_count is not None:
             try:
-                review_count = int(review_count)
+                rc = int(review_count)
+                review_count = rc if rc >= 0 else None
             except (ValueError, TypeError):
-                review_count = 0
-        else:
-            review_count = 0
+                review_count = None
+
+        from .extract.validator import validate_image_url
+        img_url = validate_image_url(raw_data.get("image_url", "")) or ""
 
         return {
             "title": title,
@@ -94,7 +103,7 @@ class ProductNormalizer:
             "discount": discount,
             "rating": rating,
             "review_count": review_count,
-            "image_url": raw_data.get("image_url", ""),
+            "image_url": img_url,
             "description": raw_data.get("description", "")[:1000],
             "specifications": raw_data.get("specifications", {}),
             "availability": raw_data.get("availability", "Unknown"),

@@ -7,16 +7,16 @@ from ._common import run_standard
 
 _CONFIG = {
     "selectors": {
-        "title": ["h1.pdp-title", "h1"],
-        "price": ["span.pdp-price-strong", "span.price-per-piece"],
+        "title": ["h1.pdp-name", "h1.pdp-title", "h1"],
+        "price": ["span.pdp-price", "span.pdp-price-strong", "span.price-per-piece"],
         "mrp": ["span.pdp-mrp"],
         "rating": ["div.index-overallRating"],
         "reviews": ["div.index-ratingsCount"],
-        "image": ["img.picture-picture", "img.jCqzTN"],
-        "brand": ["h1.pdp-name"],
+        "image": ["img.picture-picture", "div.image-grid-image img", "img.jCqzTN"],
+        "brand": ["h1.pdp-title", "h1.pdp-name"],
     },
-    "id_patterns": [r"/(\d{6,})(?:\?|/|$)"],
-    "wait_selector": "h1.pdp-title",
+    "id_patterns": [r"/(\d{6,})(?:\?|/|$)", r"-(\d{6,})/buy"],
+    "wait_selector": "h1.pdp-name, h1.pdp-title, span.pdp-price",
 }
 
 

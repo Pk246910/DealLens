@@ -12,6 +12,8 @@ import re
 
 logger = logging.getLogger(__name__)
 
+from .validator import clean_price_string, clean_rating, clean_review_count, validate_image_url
+
 _AVAILABILITY_MAP = {
     "instock": "In Stock",
     "outofstock": "Out of Stock",
@@ -28,16 +30,7 @@ def _clean_availability(value) -> str | None:
 
 
 def _parse_price(value) -> float | None:
-    if value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return float(value) if float(value) > 0 else None
-    cleaned = re.sub(r"[^\d.]", "", str(value))
-    try:
-        number = float(cleaned)
-        return number if number > 0 else None
-    except (TypeError, ValueError):
-        return None
+    return clean_price_string(value)
 
 
 def _iter_product_nodes(doc) -> list:
@@ -283,19 +276,26 @@ def _walk_state_for_product(node, found: dict, depth: int = 0) -> None:
     )
     if isinstance(img_cand, dict):
         img_cand = img_cand.get("src") or img_cand.get("url")
-    if isinstance(img_cand, str) and img_cand.startswith(("http://", "https://", "//")) and not found.get("image_url"):
-        found["image_url"] = ("https:" + img_cand) if img_cand.startswith("//") else img_cand
+    if isinstance(img_cand, str) and not found.get("image_url"):
+        cleaned_img = validate_image_url(img_cand)
+        if cleaned_img:
+            found["image_url"] = cleaned_img
 
     rating_cand = node.get("averageRating") or node.get("ratingValue") or node.get("overallRating")
     if rating_cand is not None and found.get("rating") is None:
-        try:
-            r_val = float(rating_cand)
-            if 0 < r_val <= 5:
-                found["rating"] = round(r_val, 1)
-        except (TypeError, ValueError):
-            pass
+        cleaned_r = clean_rating(rating_cand)
+        if cleaned_r is not None:
+            found["rating"] = cleaned_r
 
-    for val in node.values():
+    SKIP_BRANCHES = (
+        "similar", "recommend", "related", "carousel", "frequently",
+        "sponsored", "recent", "trending", "crosssell", "upsell",
+        "widgets", "advertisement", "footer", "navigation", "addon",
+    )
+
+    for k, val in node.items():
+        if any(sb in str(k).lower() for sb in SKIP_BRANCHES):
+            continue
         if isinstance(val, (dict, list)):
             _walk_state_for_product(val, found, depth + 1)
             if found.get("product_name") and found.get("price") and found.get("image_url"):

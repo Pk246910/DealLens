@@ -76,18 +76,25 @@ class ExtractedProduct:
     last_updated: str = ""
     confidence: str = CONFIDENCE_FAILED
     reason: str = ""
+    identity_verified: bool = True
+    identity_reason: str = ""
 
     @property
     def success(self) -> bool:
-        return bool(self.product_name) and self.confidence != CONFIDENCE_FAILED
+        return bool(self.product_name) and self.confidence != CONFIDENCE_FAILED and self.identity_verified
+
+    @property
+    def is_partial(self) -> bool:
+        """True when identity/title is verified but price could not be verified."""
+        return bool(self.product_name) and (self.price is None or self.price <= 0)
 
     @property
     def fields_available(self) -> dict:
         return {
             "product_name": self.product_name is not None,
             "brand": self.brand is not None,
-            "price": self.price is not None,
-            "original_price": self.original_price is not None,
+            "price": self.price is not None and self.price > 0,
+            "original_price": self.original_price is not None and self.original_price > 0,
             "rating": self.rating is not None,
             "review_count": self.review_count is not None,
             "image_url": self.image_url is not None,
@@ -95,32 +102,54 @@ class ExtractedProduct:
             "specifications": bool(self.specifications),
         }
 
+    @property
+    def field_status(self) -> dict:
+        return {
+            "title": {"value": self.product_name, "verified": bool(self.product_name)},
+            "price": {"value": self.price, "verified": self.price is not None and self.price > 0},
+            "mrp": {"value": self.original_price, "verified": self.original_price is not None and self.original_price > 0},
+            "rating": {"value": self.rating, "verified": self.rating is not None},
+            "review_count": {"value": self.review_count, "verified": self.review_count is not None},
+            "image": {"value": self.image_url, "verified": self.image_url is not None},
+            "availability": {"value": self.availability, "verified": self.availability is not None},
+        }
+
     def validate(self) -> list[str]:
         """Validate every field in place; invalid values become None.
 
         Returns a list of field names that were nulled.
         """
+        from .validator import (
+            clean_price_string,
+            clean_rating,
+            clean_review_count,
+            validate_image_url,
+            verify_product_identity,
+        )
+
         nulled = []
 
         if not self.product_name or not str(self.product_name).strip():
             self.product_name = None
             nulled.append("product_name")
 
-        for num_field in ("price", "original_price"):
-            value = getattr(self, num_field)
-            if value is None:
-                continue
-            try:
-                value = float(value)
-            except (TypeError, ValueError):
-                setattr(self, num_field, None)
-                nulled.append(num_field)
-                continue
-            if value <= 0:
-                setattr(self, num_field, None)
-                nulled.append(num_field)
+        # Validate price
+        if self.price is not None:
+            cleaned_p = clean_price_string(self.price)
+            if cleaned_p is None:
+                self.price = None
+                nulled.append("price")
             else:
-                setattr(self, num_field, value)
+                self.price = cleaned_p
+
+        # Validate original_price (MRP)
+        if self.original_price is not None:
+            cleaned_mrp = clean_price_string(self.original_price)
+            if cleaned_mrp is None:
+                self.original_price = None
+                nulled.append("original_price")
+            else:
+                self.original_price = cleaned_mrp
 
         if (
             self.original_price is not None
@@ -141,31 +170,34 @@ class ExtractedProduct:
                 nulled.append("discount_percentage")
 
         if self.rating is not None:
-            try:
-                rating = float(self.rating)
-                if not (0 <= rating <= 5):
-                    raise ValueError
-                self.rating = rating
-            except (TypeError, ValueError):
+            cleaned_r = clean_rating(self.rating)
+            if cleaned_r is None:
                 self.rating = None
                 nulled.append("rating")
+            else:
+                self.rating = cleaned_r
 
         if self.review_count is not None:
-            try:
-                count = int(float(self.review_count))
-                if count < 0:
-                    raise ValueError
-                self.review_count = count
-            except (TypeError, ValueError):
+            cleaned_rc = clean_review_count(self.review_count)
+            if cleaned_rc is None:
                 self.review_count = None
                 nulled.append("review_count")
+            else:
+                self.review_count = cleaned_rc
 
-        for url_field in ("product_url", "image_url"):
-            if getattr(self, url_field) is not None:
-                cleaned = _valid_url(getattr(self, url_field))
-                if cleaned is None:
-                    nulled.append(url_field)
-                setattr(self, url_field, cleaned)
+        if self.image_url is not None:
+            cleaned_img = validate_image_url(self.image_url)
+            if cleaned_img is None:
+                self.image_url = None
+                nulled.append("image_url")
+            else:
+                self.image_url = cleaned_img
+
+        if self.product_url is not None:
+            cleaned_url = _valid_url(self.product_url)
+            if cleaned_url is None:
+                nulled.append("product_url")
+            self.product_url = cleaned_url
 
         if not isinstance(self.specifications, dict):
             self.specifications = {}
@@ -173,6 +205,19 @@ class ExtractedProduct:
 
         if not isinstance(self.offers, list):
             self.offers = []
+
+        # Product identity check against submitted URL
+        if self.product_name and self.product_url:
+            ident = verify_product_identity(
+                submitted_url=self.product_url,
+                extracted_title=self.product_name,
+                extracted_id=self.product_id,
+            )
+            self.identity_verified = ident["verified"]
+            self.identity_reason = ident["reason"]
+            if not self.identity_verified:
+                self.confidence = CONFIDENCE_FAILED
+                self.reason = f"Product identity mismatch: {ident['reason']}"
 
         if self.product_name is None:
             self.confidence = CONFIDENCE_FAILED
@@ -235,6 +280,8 @@ class ExtractedProduct:
         """Public extraction block for API responses (no internals)."""
         return {
             "success": self.success,
+            "is_partial": self.is_partial,
+            "identity_verified": self.identity_verified,
             "platform": self.platform,
             "method": self.extraction_method,
             "confidence": self.confidence,
@@ -242,6 +289,7 @@ class ExtractedProduct:
             "last_updated": self.last_updated or _utcnow_iso(),
             "reason": self.reason,
             "fields_available": self.fields_available,
+            "field_status": self.field_status,
         }
 
 

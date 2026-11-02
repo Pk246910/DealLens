@@ -18,8 +18,19 @@ logger = logging.getLogger(__name__)
 _CONFIG = {
     "selectors": {
         "title": ["#productTitle"],
-        "price": [".a-price .a-offscreen", "#priceblock_ourprice", "#priceblock_dealprice"],
-        "mrp": [".a-price.a-text-price .a-offscreen", "#priceblock_listprice"],
+        "price": [
+            "#corePriceDisplay_desktop_feature_div .a-price:not(.a-text-price) .a-offscreen",
+            "#corePrice_desktop .a-price:not(.a-text-price) .a-offscreen",
+            ".a-price:not(.a-text-price) .a-offscreen",
+            "#priceblock_ourprice",
+            "#priceblock_dealprice",
+        ],
+        "mrp": [
+            ".a-price.a-text-price .a-offscreen",
+            "#priceblock_listprice",
+            ".basisPrice .a-offscreen",
+            "#corePriceDisplay_desktop_feature_div .basisPrice .a-offscreen",
+        ],
         "rating": ["#acrPopover .a-icon-alt", "#acrCustomerReviewText"],
         "reviews": ["#acrCustomerReviewText"],
         "image": ["#landingImage", "#imgBlkFront", "#imgTagWrapperId img", "#main-image-container img", "img.a-dynamic-image"],
