@@ -247,7 +247,7 @@ DealLens/
 ### Prerequisites
 - **Python:** 3.12 or newer
 - **Node.js:** 20 or newer
-- **Database:** SQLite (default for development) or PostgreSQL (`DealLens_db`)
+- **Database:** PostgreSQL (`DealLens_db`)
 
 ---
 
